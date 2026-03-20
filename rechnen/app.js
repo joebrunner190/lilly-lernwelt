@@ -177,7 +177,27 @@
     },
 
     // Leitner helpers
+
+    // Get commutative twin key for multiply (3x6 <-> 6x3)
+    _getTwinKey(key) {
+      if (key.startsWith('d:') || key.startsWith('w:')) return null;
+      const parts = key.split('x');
+      if (parts.length !== 2) return null;
+      return parts[1] + 'x' + parts[0];
+    },
+
     getCard(key) {
+      // For multiply keys, check both AxB and BxA, use the better one
+      const twin = this._getTwinKey(key);
+      if (twin && this.data.leitner[twin] && !this.data.leitner[key]) {
+        // Twin exists but this key doesn't - copy twin's progress
+        this.data.leitner[key] = { ...this.data.leitner[twin] };
+      } else if (twin && this.data.leitner[twin] && this.data.leitner[key]) {
+        // Both exist - use the one with higher box
+        if (this.data.leitner[twin].box > this.data.leitner[key].box) {
+          this.data.leitner[key] = { ...this.data.leitner[twin] };
+        }
+      }
       if (!this.data.leitner[key]) {
         this.data.leitner[key] = { box: 1, lastReviewed: null, correct: 0, wrong: 0 };
       }
@@ -190,6 +210,9 @@
       card.correct++;
       card.lastReviewed = Date.now();
       this.data.stats.totalPracticed++;
+      // Sync commutative twin
+      const twin = this._getTwinKey(key);
+      if (twin) this.data.leitner[twin] = { ...this.data.leitner[key] };
       this._updateStreak();
       this.save();
     },
@@ -200,6 +223,9 @@
       card.wrong++;
       card.lastReviewed = Date.now();
       this.data.stats.totalPracticed++;
+      // Sync commutative twin
+      const twin = this._getTwinKey(key);
+      if (twin) this.data.leitner[twin] = { ...this.data.leitner[key] };
       this._updateStreak();
       this.save();
     },
