@@ -255,11 +255,27 @@
       </div>
     </div>
 
+    <div class="level-card" onclick="DatumApp.startLevel('jahreszeiten')">
+      <div class="level-icon">&#127808;</div>
+      <div class="level-info">
+        <div class="level-name">Jahreszeiten</div>
+        <div class="level-desc">Welche Jahreszeit ist im März?</div>
+      </div>
+    </div>
+
     <div class="level-card" onclick="DatumApp.startLevel('raetsel')">
       <div class="level-icon">&#129300;</div>
       <div class="level-info">
         <div class="level-name">Datum-Rätsel</div>
         <div class="level-desc">Heute ist der 31. Dez., morgen ist...?</div>
+      </div>
+    </div>
+
+    <div class="level-card" onclick="DatumApp.startLevel('heute')">
+      <div class="level-icon">&#128198;</div>
+      <div class="level-info">
+        <div class="level-name">Welcher Tag ist heute?</div>
+        <div class="level-desc">Echtes Datum von heute &uuml;ben</div>
       </div>
     </div>
   </div>
@@ -283,7 +299,7 @@
     <div class="result-score" id="result-score"></div>
     <div class="result-stars" id="result-stars"></div>
     <button class="btn-again" onclick="DatumApp.restartLevel()">Nochmal</button>
-    <button class="btn-menu" onclick="DatumApp.showMenu()">Zurueck</button>
+    <button class="btn-menu" onclick="DatumApp.showMenu()">Zurück</button>
   </div>
 
   <script>
@@ -486,6 +502,153 @@
         };
       },
 
+      // Level 7: Jahreszeiten
+      genJahreszeiten() {
+        const jahreszeitenData = [
+          { name: 'Frühling', monate: ['März', 'April', 'Mai'], emoji: '🌷' },
+          { name: 'Sommer', monate: ['Juni', 'Juli', 'August'], emoji: '☀️' },
+          { name: 'Herbst', monate: ['September', 'Oktober', 'November'], emoji: '🍂' },
+          { name: 'Winter', monate: ['Dezember', 'Jänner', 'Februar'], emoji: '❄️' }
+        ];
+        const variants = [
+          // Variant A: Which season is month X in?
+          () => {
+            const m = this.randInt(0, 11);
+            const monat = MONATE[m];
+            let correctSeason;
+            for (const jz of jahreszeitenData) {
+              if (jz.monate.includes(monat)) { correctSeason = jz; break; }
+            }
+            const choices = jahreszeitenData.map(j => j.emoji + ' ' + j.name);
+            this.shuffle(choices);
+            const correctChoice = correctSeason.emoji + ' ' + correctSeason.name;
+            return {
+              type: 'choice',
+              question: 'Welche Jahreszeit ist im ' + monat + '?',
+              choices: choices,
+              correctIndex: choices.indexOf(correctChoice),
+              explanation: monat + ' gehört zum ' + correctSeason.name + '!'
+            };
+          },
+          // Variant B: Which months belong to season X?
+          () => {
+            const jz = jahreszeitenData[this.randInt(0, 3)];
+            const correctAnswer = jz.monate.join(', ');
+            const otherSeasons = jahreszeitenData.filter(j => j.name !== jz.name);
+            const wrong = otherSeasons.map(j => j.monate.join(', '));
+            this.shuffle(wrong);
+            const choices = [correctAnswer, wrong[0], wrong[1], wrong[2]];
+            this.shuffle(choices);
+            return {
+              type: 'choice',
+              question: 'Welche Monate gehören zum ' + jz.name + '? ' + jz.emoji,
+              choices: choices,
+              correctIndex: choices.indexOf(correctAnswer),
+              explanation: jz.name + ': ' + correctAnswer,
+              singleCol: true
+            };
+          }
+        ];
+        return variants[this.randInt(0, variants.length - 1)]();
+      },
+
+      // Level 8: Welcher Tag ist heute?
+      genHeute() {
+        const now = new Date();
+        const realDay = now.getDate();
+        const realMonth = now.getMonth(); // 0-based
+        const realYear = now.getFullYear();
+        const realWeekday = WOCHENTAGE[(now.getDay() + 6) % 7]; // JS Sunday=0, we need Monday=0
+
+        const variants = [
+          // What weekday is today?
+          () => {
+            const wrong = WOCHENTAGE.filter(w => w !== realWeekday);
+            this.shuffle(wrong);
+            const choices = [realWeekday, wrong[0], wrong[1], wrong[2]];
+            this.shuffle(choices);
+            return {
+              type: 'choice',
+              question: 'Welcher Wochentag ist heute?',
+              choices: choices,
+              correctIndex: choices.indexOf(realWeekday),
+              explanation: 'Heute ist ' + realWeekday + '!'
+            };
+          },
+          // What month is it?
+          () => {
+            const correctMonth = MONATE[realMonth];
+            const wrong = MONATE.filter(m => m !== correctMonth);
+            this.shuffle(wrong);
+            const choices = [correctMonth, wrong[0], wrong[1], wrong[2]];
+            this.shuffle(choices);
+            return {
+              type: 'choice',
+              question: 'Welcher Monat ist gerade?',
+              choices: choices,
+              correctIndex: choices.indexOf(correctMonth),
+              explanation: 'Wir haben gerade ' + correctMonth + '!'
+            };
+          },
+          // What date is today in short form?
+          () => {
+            const correctStr = realDay + '.' + (realMonth + 1) + '.' + realYear;
+            const wrongDates = [
+              (realDay > 1 ? realDay - 1 : realDay + 2) + '.' + (realMonth + 1) + '.' + realYear,
+              realDay + '.' + (realMonth === 0 ? 12 : realMonth) + '.' + realYear,
+              (realDay < 28 ? realDay + 1 : realDay - 1) + '.' + (realMonth + 1) + '.' + realYear
+            ];
+            const choices = [correctStr, ...wrongDates];
+            this.shuffle(choices);
+            return {
+              type: 'choice',
+              question: 'Welches Datum ist heute?',
+              choices: choices,
+              correctIndex: choices.indexOf(correctStr),
+              explanation: 'Heute ist der ' + correctStr + '!',
+              singleCol: true
+            };
+          },
+          // What year is it?
+          () => {
+            const choices = [String(realYear), String(realYear - 1), String(realYear + 1), String(realYear - 2)];
+            this.shuffle(choices);
+            return {
+              type: 'choice',
+              question: 'Welches Jahr haben wir gerade?',
+              choices: choices,
+              correctIndex: choices.indexOf(String(realYear)),
+              explanation: 'Wir sind im Jahr ' + realYear + '!'
+            };
+          },
+          // What date is tomorrow?
+          () => {
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const tDay = tomorrow.getDate();
+            const tMonth = tomorrow.getMonth();
+            const tYear = tomorrow.getFullYear();
+            const correctStr = tDay + '. ' + MONATE[tMonth] + ' ' + tYear;
+            const wrongStrs = [
+              (tDay < 28 ? tDay + 1 : tDay - 1) + '. ' + MONATE[tMonth] + ' ' + tYear,
+              tDay + '. ' + MONATE[(tMonth + 1) % 12] + ' ' + tYear,
+              realDay + '. ' + MONATE[realMonth] + ' ' + realYear
+            ];
+            const choices = [correctStr, ...wrongStrs];
+            this.shuffle(choices);
+            return {
+              type: 'choice',
+              question: 'Welches Datum ist morgen?',
+              choices: choices,
+              correctIndex: choices.indexOf(correctStr),
+              explanation: 'Morgen ist der ' + correctStr + '!',
+              singleCol: true
+            };
+          }
+        ];
+        return variants[this.randInt(0, variants.length - 1)]();
+      },
+
       generateQuestions(level) {
         const q = [];
         for (let i = 0; i < ROUNDS; i++) {
@@ -496,6 +659,8 @@
             case 'tage': q.push(this.genTage()); break;
             case 'reihenfolge': q.push(this.genReihenfolge()); break;
             case 'raetsel': q.push(this.genRaetsel()); break;
+            case 'jahreszeiten': q.push(this.genJahreszeiten()); break;
+            case 'heute': q.push(this.genHeute()); break;
           }
         }
         return q;
@@ -644,7 +809,7 @@
         let emoji = '&#127881;', title = 'Super gemacht!';
         if (pct >= 90) { emoji = '&#127942;'; title = 'Fantastisch!'; }
         else if (pct >= 70) { emoji = '&#128079;'; title = 'Gut gemacht!'; }
-        else if (pct >= 50) { emoji = '&#128170;'; title = 'Weiter ueben!'; }
+        else if (pct >= 50) { emoji = '&#128170;'; title = 'Weiter üben!'; }
         else { emoji = '&#128522;'; title = 'Das wird schon!'; }
 
         document.getElementById('result-emoji').innerHTML = emoji;

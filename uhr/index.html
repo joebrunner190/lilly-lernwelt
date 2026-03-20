@@ -336,6 +336,15 @@
   <div id="menu-screen">
     <h1 class="menu-title">Was möchtest du üben?</h1>
 
+    <div class="level-card" onclick="UhrApp.startLevel('houronly')">
+      <div class="level-icon">&#127775;</div>
+      <div class="level-info">
+        <div class="level-name">Nur Stundenzeiger</div>
+        <div class="level-desc">Einstieg: Welche Stunde zeigt der rote Zeiger?</div>
+      </div>
+      <div class="level-badge" id="badge-houronly">Start</div>
+    </div>
+
     <div class="level-card" onclick="UhrApp.startLevel('read')">
       <div class="level-icon">&#128336;</div>
       <div class="level-info">
@@ -388,6 +397,24 @@
         <div class="level-desc">18:30, 22:15, 13:45...</div>
       </div>
       <div class="level-badge" id="badge-format24">Start</div>
+    </div>
+
+    <div class="level-card" onclick="UhrApp.startLevel('calculate')">
+      <div class="level-icon">&#129518;</div>
+      <div class="level-info">
+        <div class="level-name">Zeitrechnung</div>
+        <div class="level-desc">Was ist in 30 Min? Wie lange dauert es?</div>
+      </div>
+      <div class="level-badge" id="badge-calculate">Start</div>
+    </div>
+
+    <div class="level-card" onclick="UhrApp.startLevel('alltag')">
+      <div class="level-icon">&#127968;</div>
+      <div class="level-info">
+        <div class="level-name">Alltag &amp; Uhrzeit</div>
+        <div class="level-desc">Wann fr&uuml;hst&uuml;ckst du? Wann beginnt die Schule?</div>
+      </div>
+      <div class="level-badge" id="badge-alltag">Start</div>
     </div>
   </div>
 
@@ -508,6 +535,8 @@
         const q = [];
         for (let i = 0; i < ROUNDS; i++) {
           switch(level) {
+            case 'houronly':
+              q.push(this.genHourOnly()); break;
             case 'read':
               q.push(this.genRead()); break;
             case 'digital':
@@ -520,6 +549,10 @@
               q.push(this.genFiveMin()); break;
             case 'format24':
               q.push(this.genFormat24()); break;
+            case 'calculate':
+              q.push(this.genCalculate()); break;
+            case 'alltag':
+              q.push(this.genAlltag()); break;
           }
         }
         return q;
@@ -646,6 +679,73 @@
             : 'Es ist ' + displayTime + ' Uhr vormittags. Schreibe im 24h-Format:',
           answer: { h: h24, m: m },
           clockOpts: {}
+        };
+      },
+
+      // NEW: Hour-only (beginner - only hour hand shown)
+      genHourOnly() {
+        const h = this.randInt(1, 12);
+        const choices = [h, h % 12 + 1, (h + 10) % 12 + 1, (h + 5) % 12 + 1].map(String);
+        this.shuffle(choices);
+        return {
+          type: 'choice',
+          hours: h, minutes: 0,
+          question: 'Welche Stunde zeigt der rote Zeiger?',
+          choices: choices.map(c => c + ' Uhr'),
+          correctIndex: choices.indexOf(String(h)),
+          clockOpts: { hideMinute: true, highlightHour: true },
+          explanation: 'Der rote Zeiger zeigt auf ' + h + ' Uhr!'
+        };
+      },
+
+      // NEW: Time calculation
+      genCalculate() {
+        const h = this.randInt(1, 11);
+        const m = [0, 15, 30][this.randInt(0, 2)];
+        const variants = [
+          { addH: 1, addM: 0, text: 'in 1 Stunde' },
+          { addH: 2, addM: 0, text: 'in 2 Stunden' },
+          { addH: 0, addM: 30, text: 'in 30 Minuten' },
+          { addH: 1, addM: 30, text: 'in 1,5 Stunden' },
+          { addH: 0, addM: 15, text: 'in 15 Minuten' }
+        ];
+        const v = variants[this.randInt(0, variants.length - 1)];
+        let resultH = h + v.addH;
+        let resultM = m + v.addM;
+        if (resultM >= 60) { resultH++; resultM -= 60; }
+        if (resultH > 12) resultH -= 12;
+        const timeStr = h + ':' + String(m).padStart(2, '0');
+        return {
+          type: 'time-input',
+          hours: h, minutes: m,
+          question: 'Es ist ' + timeStr + ' Uhr. Wie spät ist es ' + v.text + '?',
+          answer: { h: resultH, m: resultM },
+          clockOpts: {}
+        };
+      },
+
+      // NEW: Daily routine matching
+      genAlltag() {
+        const routines = [
+          { activity: 'Aufstehen', h: 7, m: 0, icon: '🌅' },
+          { activity: 'Frühstück', h: 7, m: 30, icon: '🥣' },
+          { activity: 'Schule beginnt', h: 8, m: 0, icon: '🏫' },
+          { activity: 'Große Pause', h: 10, m: 0, icon: '⚽' },
+          { activity: 'Mittagessen', h: 12, m: 0, icon: '🍝' },
+          { activity: 'Hausaufgaben', h: 3, m: 0, icon: '📚' },
+          { activity: 'Spielen im Park', h: 4, m: 0, icon: '🏃' },
+          { activity: 'Abendessen', h: 6, m: 0, icon: '🍽️' },
+          { activity: 'Zähneputzen', h: 7, m: 30, icon: '🪥' },
+          { activity: 'Gute Nacht', h: 8, m: 0, icon: '🌙' }
+        ];
+        const r = routines[this.randInt(0, routines.length - 1)];
+        return {
+          type: 'time-input',
+          hours: r.h, minutes: r.m,
+          question: r.icon + ' ' + r.activity + ' — Wann ist das meistens?',
+          answer: { h: r.h, m: r.m },
+          clockOpts: {},
+          showClock: false
         };
       },
 

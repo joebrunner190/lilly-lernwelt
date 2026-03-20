@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -364,6 +365,21 @@
       margin-top: 4px;
       font-weight: 600;
     }
+    .btn-reset {
+      padding: 8px 14px;
+      border: 2px solid #ef4444;
+      border-radius: 10px;
+      background: white;
+      color: #ef4444;
+      font-family: 'Nunito', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-reset:hover { background: #fef2f2; }
+    .btn-reset:active { background: #ef4444; color: white; }
+    .btn-reset.confirmed { background: #ef4444; color: white; border-color: #ef4444; }
   </style>
 </head>
 <body>
@@ -481,6 +497,11 @@
       <div id="dash-last-activity"></div>
     </div>
 
+    <div class="dash-card">
+      <h3>&#128465; Fortschritt zur&uuml;cksetzen</h3>
+      <div id="dash-reset"></div>
+    </div>
+
     <button class="btn-logout" onclick="Portal.logout()" style="margin-top:8px; color:rgba(255,255,255,0.7);">Abmelden</button>
   </div>
 
@@ -501,6 +522,23 @@
       firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.database();
+
+    // Second Firebase app for Rechnen (Firestore in lillymathe1x1)
+    const rechenConfig = {
+      apiKey: "AIzaSyD3Vkj39ylPHYRzw-DxBvYqAi1STPkPCHo",
+      authDomain: "lillymathe1x1.firebaseapp.com",
+      projectId: "lillymathe1x1",
+      storageBucket: "lillymathe1x1.firebasestorage.app",
+      messagingSenderId: "855669535952",
+      appId: "1:855669535952:web:29bf91b2f4845d3e50dad5"
+    };
+    let rechenApp;
+    try {
+      rechenApp = firebase.app('rechnen');
+    } catch(e) {
+      rechenApp = firebase.initializeApp(rechenConfig, 'rechnen');
+    }
+    const rechenDb = rechenApp.firestore();
 
     // ===== USERS CONFIG =====
     const USERS = {
@@ -599,6 +637,9 @@
         const isParent = u.role === 'parent';
         document.getElementById('btn-eltern-dash').style.display = isParent ? 'block' : 'none';
 
+        // Remember session so we skip login when returning from modules
+        sessionStorage.setItem('lernwelt-user', this.currentUser);
+
         this.loadStats();
       },
 
@@ -606,6 +647,7 @@
         this.currentUser = null;
         this.pin = '';
         this.pinReset();
+        sessionStorage.removeItem('lernwelt-user');
         document.getElementById('eltern-password').value = '';
         document.getElementById('login-screen').style.display = 'block';
         document.getElementById('portal-screen').style.display = 'none';
@@ -615,36 +657,95 @@
         this.switchLoginTab('lilly');
       },
 
+      // Auto-login from session (returning from module)
+      tryAutoLogin() {
+        const saved = sessionStorage.getItem('lernwelt-user');
+        if (saved && USERS[saved]) {
+          this.currentUser = saved;
+          this.showPortal();
+          return true;
+        }
+        return false;
+      },
+
       // --- Stats & Stars ---
       loadStats() {
         const today = this.dateKey();
+
+        // Load Uhr & Datum stats from Realtime DB
         db.ref('stats/lilly').once('value').then(snap => {
           const data = snap.val() || {};
-          this.renderStars(data, today);
+          this.statsData = data;
+          this.renderModuleStars('uhr', data.uhr, today);
+          this.renderModuleStars('datum', data.datum, today);
           this.renderStreak(data);
+        }).catch(() => {});
+
+        // Load Lernkarten stats from Realtime DB (vocabulary)
+        db.ref('vocabulary').once('value').then(snap => {
+          const data = snap.val();
+          if (data) {
+            const cards = Object.values(data);
+            const total = cards.length;
+            const mastered = cards.filter(c => c.box >= 4).length;
+            const practiced = cards.filter(c => c.box > 1 || c.wrongCount > 0).length;
+            const stars = this.calcStarsFromProgress(mastered, total);
+            this.renderStarsDirectly('lernkarten', stars, mastered + '/' + total + ' gelernt');
+          } else {
+            this.renderStarsDirectly('lernkarten', 0, 'Noch nicht geübt');
+          }
         }).catch(() => {
-          // Offline fallback - show empty stars
-          this.renderStars({}, today);
+          this.renderStarsDirectly('lernkarten', 0, 'Offline');
+        });
+
+        // Load Rechnen stats from Firestore (lillymathe1x1)
+        rechenDb.collection('users').doc('Lilly').get().then(doc => {
+          if (doc.exists) {
+            const d = doc.data();
+            const leitner = d.leitner || {};
+            const multiKeys = Object.keys(leitner).filter(k => !k.startsWith('d:') && !k.startsWith('w:'));
+            const total = multiKeys.length;
+            const mastered = multiKeys.filter(k => leitner[k].box >= 4).length;
+            const stars = this.calcStarsFromProgress(mastered, total);
+            this.renderStarsDirectly('rechnen', stars, mastered + '/' + total + ' gemeistert');
+          } else {
+            this.renderStarsDirectly('rechnen', 0, 'Noch nicht geübt');
+          }
+        }).catch(() => {
+          this.renderStarsDirectly('rechnen', 0, 'Offline');
         });
       },
 
-      renderStars(data, today) {
-        MODULES.forEach(mod => {
-          const modData = (data[mod] && data[mod][today]) || {};
-          const correct = modData.correct || 0;
-          const total = modData.total || 0;
-          const stars = this.calcStars(correct, total);
+      renderModuleStars(mod, modAllData, today) {
+        const modData = (modAllData && modAllData[today]) || {};
+        const correct = modData.correct || 0;
+        const total = modData.total || 0;
+        const stars = this.calcStars(correct, total);
+        const text = total > 0 ? (correct + '/' + total + ' richtig') : 'Noch nicht geübt';
+        this.renderStarsDirectly(mod, stars, text);
+      },
 
-          const starsEl = document.getElementById('stars-' + mod);
-          const scoreEl = document.getElementById('score-' + mod);
+      renderStarsDirectly(mod, stars, text) {
+        const starsEl = document.getElementById('stars-' + mod);
+        const scoreEl = document.getElementById('score-' + mod);
+        if (!starsEl || !scoreEl) return;
+        let html = '';
+        for (let i = 0; i < 5; i++) {
+          html += '<span class="' + (i < stars ? 'star-filled' : 'star-empty') + '">&#9733;</span>';
+        }
+        starsEl.innerHTML = html;
+        scoreEl.textContent = text;
+      },
 
-          let html = '';
-          for (let i = 0; i < 5; i++) {
-            html += '<span class="' + (i < stars ? 'star-filled' : 'star-empty') + '">&#9733;</span>';
-          }
-          starsEl.innerHTML = html;
-          scoreEl.textContent = total > 0 ? (correct + '/' + total + ' richtig') : 'Noch nicht geübt';
-        });
+      calcStarsFromProgress(mastered, total) {
+        if (total === 0) return 0;
+        const pct = mastered / total;
+        if (pct >= 0.9) return 5;
+        if (pct >= 0.7) return 4;
+        if (pct >= 0.5) return 3;
+        if (pct >= 0.3) return 2;
+        if (pct > 0) return 1;
+        return 0;
       },
 
       calcStars(correct, total) {
@@ -710,8 +811,9 @@
           this.renderDashModules(data);
           this.renderWeakAreas(data);
           this.renderLastActivity(data);
+          this.renderResetButtons();
         }).catch(() => {
-          document.getElementById('dash-modules').innerHTML = '<p style="color:#6b7280;font-size:14px;">Keine Daten verfuegbar</p>';
+          document.getElementById('dash-modules').innerHTML = '<p style="color:#6b7280;font-size:14px;">Keine Daten verfügbar</p>';
         });
       },
 
@@ -846,6 +948,74 @@
         container.innerHTML = html;
       },
 
+      // --- Reset ---
+      renderResetButtons() {
+        const container = document.getElementById('dash-reset');
+        let html = '';
+        MODULES.forEach(mod => {
+          html += '<div class="dash-stat-row">';
+          html += '<span class="dash-stat-label">' + MODULE_LABELS[mod] + '</span>';
+          html += '<button class="btn-reset" id="reset-' + mod + '" onclick="Portal.resetModule(\'' + mod + '\')">Zurücksetzen</button>';
+          html += '</div>';
+        });
+        container.innerHTML = html;
+      },
+
+      resetModule(mod) {
+        const btn = document.getElementById('reset-' + mod);
+        if (!btn.classList.contains('confirmed')) {
+          btn.classList.add('confirmed');
+          btn.textContent = 'Wirklich löschen?';
+          setTimeout(() => {
+            if (btn) { btn.classList.remove('confirmed'); btn.textContent = 'Zurücksetzen'; }
+          }, 3000);
+          return;
+        }
+
+        btn.textContent = '...';
+        btn.disabled = true;
+
+        if (mod === 'uhr' || mod === 'datum') {
+          db.ref('stats/lilly/' + mod).remove().then(() => {
+            btn.textContent = 'Erledigt!';
+            setTimeout(() => this.loadDashboard(), 1000);
+          }).catch(() => { btn.textContent = 'Fehler'; });
+        } else if (mod === 'lernkarten') {
+          // Reset all boxes to 1 and wrongCount to 0
+          db.ref('vocabulary').once('value').then(snap => {
+            const data = snap.val();
+            if (data) {
+              Object.keys(data).forEach(key => {
+                data[key].box = 1;
+                data[key].wrongCount = 0;
+                data[key].lastReviewed = null;
+              });
+              db.ref('vocabulary').set(data).then(() => {
+                btn.textContent = 'Erledigt!';
+                setTimeout(() => this.loadDashboard(), 1000);
+              });
+            }
+          }).catch(() => { btn.textContent = 'Fehler'; });
+        } else if (mod === 'rechnen') {
+          // Reset Leitner boxes in Firestore
+          rechenDb.collection('users').doc('Lilly').get().then(doc => {
+            if (doc.exists) {
+              const d = doc.data();
+              const leitner = d.leitner || {};
+              Object.keys(leitner).forEach(key => {
+                leitner[key] = { box: 1, correct: 0, wrong: 0, lastReviewed: null };
+              });
+              d.leitner = leitner;
+              d.stats = { totalPracticed: 0, streakDays: 0, lastPracticeDate: null };
+              rechenDb.collection('users').doc('Lilly').set(d).then(() => {
+                btn.textContent = 'Erledigt!';
+                setTimeout(() => this.loadDashboard(), 1000);
+              });
+            }
+          }).catch(() => { btn.textContent = 'Fehler'; });
+        }
+      },
+
       // --- Helpers ---
       dateKey() {
         return this.dateKeyFromDate(new Date());
@@ -873,6 +1043,9 @@
     document.getElementById('eltern-password').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') Portal.elternLogin();
     });
+
+    // Auto-login if returning from a module
+    Portal.tryAutoLogin();
   </script>
 </body>
 </html>
