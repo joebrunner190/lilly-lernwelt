@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lillys Lernbox</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <style>
+    .perspective-1000 { perspective: 1000px; }
+    .backface-hidden { backface-visibility: hidden; }
+    .rotate-y-180 { transform: rotateY(180deg); }
+    .preserve-3d { transform-style: preserve-3d; }
+    select option { background: #1e1b4b; color: white; }
+    @keyframes pulse-sync { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    .sync-pulse { animation: pulse-sync 1.5s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCOxoBSjEF6VydbYWp7GDiDBxnSB8HvJgA",
+      authDomain: "lilly-lernbox-9fcf9.firebaseapp.com",
+      databaseURL: "https://lilly-lernbox-9fcf9-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "lilly-lernbox-9fcf9",
+      storageBucket: "lilly-lernbox-9fcf9.firebasestorage.app",
+      messagingSenderId: "467753183092",
+      appId: "1:467753183092:web:e799c7b262ce5d56252e21"
+    };
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const vocabRef = db.ref('vocabulary');
+  </script>
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    const Icon = ({ d, size = 20, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+           strokeLinejoin="round" className={className}><path d={d} /></svg>
+    );
+    const Icons = {
+      Sparkles: (p) => <Icon {...p} d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3zM5 3v4M19 17v4M3 5h4M17 19h4" />,
+      BookOpen: (p) => <Icon {...p} d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />,
+      Edit2: (p) => <Icon {...p} d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />,
+      Award: (p) => <Icon {...p} d="M12 15l-3 6h6l-3-6zM8.21 13.89L7 23l5-3 5 3-1.21-9.12M12 2a7 7 0 1 0 0 14 7 7 0 0 0 0-14z" />,
+      Plus: (p) => <Icon {...p} d="M12 5v14M5 12h14" />,
+      Trash2: (p) => <Icon {...p} d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />,
+      Download: (p) => <Icon {...p} d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />,
+      Upload: (p) => <Icon {...p} d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />,
+      RotateCcw: (p) => <Icon {...p} d="M1 4v6h6M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />,
+      AlertTriangle: (p) => <Icon {...p} d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" />,
+      Cloud: (p) => <Icon {...p} d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />,
+      CloudOff: (p) => <Icon {...p} d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M1 1l22 22M5 5a8 8 0 0 0 4 14h9" />,
+    };
+
+    function LillyLernbox() {
+      const initialVocabulary = [
+        { id: 1, front: "die Jacke", back: "die Jacken (Plural)", category: "Kleidung", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 2, front: "der Mantel", back: "die M\u00e4ntel (Plural)", category: "Kleidung", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 3, front: "der Wecker", back: "die Wecker (Plural)", category: "Gegenst\u00e4nde", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 4, front: "das Handy", back: "die Handys (Plural)", category: "Gegenst\u00e4nde", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 5, front: "das Baby", back: "die Babys (Plural)", category: "Familie", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 6, front: "die Eltern", back: "(nur Plural)", category: "Familie", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 7, front: "die Familie", back: "die Familien (Plural)", category: "Familie", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 8, front: "die Frau", back: "die Frauen (Plural)", category: "Familie", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 9, front: "der Mann", back: "die M\u00e4nner (Plural)", category: "Familie", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 10, front: "der Mensch", back: "die Menschen (Plural)", category: "Familie", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 11, front: "die Schwester", back: "die Schwestern (Plural)", category: "Familie", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 12, front: "der Bruder", back: "die Br\u00fcder (Plural)", category: "Familie", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 13, front: "der Sohn", back: "die S\u00f6hne (Plural)", category: "Familie", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 14, front: "die Tochter", back: "die T\u00f6chter (Plural)", category: "Familie", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 15, front: "die Hilfe", back: "die Hilfen (Plural)", category: "Abstrakt", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 16, front: "backen", back: "er b\u00e4ckt (3. Person Singular)", category: "Verben", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 17, front: "dr\u00fccken", back: "es dr\u00fcckt (3. Person Singular)", category: "Verben", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 18, front: "machen", back: "es macht (3. Person Singular)", category: "Verben", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 19, front: "wecken", back: "es weckt (3. Person Singular)", category: "Verben", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 20, front: "schicken", back: "er schickt (3. Person Singular)", category: "Verben", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 21, front: "schlecken", back: "es schleckt (3. Person Singular)", category: "Verben", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 22, front: "finden", back: "er findet (3. Person Singular)", category: "Verben", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 23, front: "helfen", back: "er hilft (3. Person Singular)", category: "Verben", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 24, front: "trocken", back: "trocken sein (Adjektiv)", category: "Adjektive", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 25, front: "wei\u00df", back: "wei\u00df sein (Adjektiv)", category: "Adjektive", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 26, front: "gl\u00fccklich", back: "gl\u00fccklich sein (Adjektiv)", category: "Adjektive", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 27, front: "schlimm", back: "schlimm sein (Adjektiv)", category: "Adjektive", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 28, front: "schwarz", back: "schwarz sein (Adjektiv)", category: "Adjektive", box: 1, lastReviewed: null, wrongCount: 0 },
+        { id: 29, front: "hinten", back: "hinten sein (Adverb)", category: "Adverb", box: 1, lastReviewed: null, wrongCount: 0 },
+      ];
+
+      // --- State ---
+      const [vocabulary, setVocabulary] = useState([]);
+      const [initialized, setInitialized] = useState(false);
+      const [syncStatus, setSyncStatus] = useState('connecting');
+      const [currentCard, setCurrentCard] = useState(null);
+      const [isFlipped, setIsFlipped] = useState(false);
+      const [mode, setMode] = useState('learn');
+      const [showAddForm, setShowAddForm] = useState(false);
+      const [editingCard, setEditingCard] = useState(null);
+      const [showResetConfirm, setShowResetConfirm] = useState(false);
+      const [resetStep, setResetStep] = useState(0);
+      const [formData, setFormData] = useState({ front: '', back: '', category: 'Sonstiges' });
+      const isWriting = useRef(false);
+
+      // Session-State: Karten fuer die aktuelle Lernrunde
+      const [sessionCards, setSessionCards] = useState([]);
+      const [sessionIndex, setSessionIndex] = useState(0);
+      const [sessionActive, setSessionActive] = useState(false);
+      const [dailyLimit, setDailyLimit] = useState(15);
+
+      // --- Firebase ---
+      useEffect(() => {
+        const connRef = firebase.database().ref('.info/connected');
+        const connListener = connRef.on('value', (snap) => {
+          setSyncStatus(snap.val() === true ? 'synced' : 'offline');
+        });
+        const dataListener = vocabRef.on('value', (snapshot) => {
+          if (isWriting.current) { isWriting.current = false; return; }
+          const data = snapshot.val();
+          if (data) {
+            const arr = Object.values(data).map(card => ({ ...card, wrongCount: card.wrongCount ?? 0 }));
+            arr.sort((a, b) => a.id - b.id);
+            setVocabulary(arr);
+            setSyncStatus('synced');
+          } else {
+            const dataObj = {};
+            initialVocabulary.forEach(card => { dataObj[card.id] = card; });
+            vocabRef.set(dataObj);
+            setVocabulary(initialVocabulary);
+          }
+          setInitialized(true);
+        }, () => {
+          setSyncStatus('offline');
+          const saved = localStorage.getItem('lillyVocabulary');
+          if (saved) {
+            try { setVocabulary(JSON.parse(saved).map(c => ({ ...c, wrongCount: c.wrongCount ?? 0 }))); }
+            catch { setVocabulary(initialVocabulary); }
+          } else { setVocabulary(initialVocabulary); }
+          setInitialized(true);
+        });
+        return () => { connRef.off('value', connListener); vocabRef.off('value', dataListener); };
+      }, []);
+
+      useEffect(() => {
+        if (!initialized) return;
+        localStorage.setItem('lillyVocabulary', JSON.stringify(vocabulary));
+        if (vocabulary.length > 0) {
+          const dataObj = {};
+          vocabulary.forEach(card => { dataObj[card.id] = card; });
+          isWriting.current = true;
+          vocabRef.set(dataObj).then(() => setSyncStatus('synced')).catch(() => setSyncStatus('offline'));
+        } else { isWriting.current = true; vocabRef.remove(); }
+      }, [vocabulary, initialized]);
+
+      // --- Computed ---
+      const stats = useMemo(() => {
+        const total = vocabulary.length;
+        const byBox = [1,2,3,4,5].map(box => vocabulary.filter(c => c.box === box).length);
+        const notDone = vocabulary.filter(c => c.box < 5).length;
+        const problemCards = vocabulary.filter(c => c.wrongCount > 0).sort((a, b) => b.wrongCount - a.wrongCount);
+        return { total, byBox, notDone, problemCards };
+      }, [vocabulary]);
+
+      // --- Karten fuer eine Lernrunde zusammenstellen ---
+      // Prioritaet: Box 1 zuerst, dann Box 2, 3, 4 auffuellen
+      const buildSession = useCallback((limit) => {
+        let pool = [];
+        for (let box = 1; box <= 4; box++) {
+          const cardsInBox = vocabulary.filter(c => c.box === box);
+          // Mische die Karten innerhalb jeder Box
+          const shuffled = [...cardsInBox].sort(() => Math.random() - 0.5);
+          pool = pool.concat(shuffled);
+          if (pool.length >= limit) break;
+        }
+        return pool.slice(0, limit);
+      }, [vocabulary]);
+
+      // --- Lernrunde starten ---
+      const startLearning = useCallback(() => {
+        const cards = buildSession(dailyLimit);
+        if (cards.length > 0) {
+          setSessionCards(cards);
+          setSessionIndex(0);
+          setCurrentCard(cards[0]);
+          setIsFlipped(false);
+          setSessionActive(true);
+        }
+      }, [buildSession, dailyLimit]);
+
+      // --- Antwort verarbeiten ---
+      const handleAnswer = useCallback((correct) => {
+        if (!currentCard) return;
+
+        // Vocabulary aktualisieren
+        const updatedVocabulary = vocabulary.map(card => {
+          if (card.id === currentCard.id) {
+            return {
+              ...card,
+              box: correct ? Math.min(card.box + 1, 5) : 1,
+              wrongCount: correct ? card.wrongCount : card.wrongCount + 1,
+              lastReviewed: new Date().toISOString()
+            };
+          }
+          return card;
+        });
+        setVocabulary(updatedVocabulary);
+
+        // Naechste Karte in der Session (NICHT die falsche sofort wieder)
+        const nextIndex = sessionIndex + 1;
+        if (nextIndex < sessionCards.length) {
+          setSessionIndex(nextIndex);
+          setCurrentCard(sessionCards[nextIndex]);
+          setIsFlipped(false);
+        } else {
+          // Runde fertig
+          setCurrentCard(null);
+          setSessionActive(false);
+        }
+      }, [currentCard, vocabulary, sessionIndex, sessionCards]);
+
+      // --- Karte hinzufuegen ---
+      const addCard = useCallback(() => {
+        if (!formData.front.trim() || !formData.back.trim()) return;
+        setVocabulary(prev => [...prev, {
+          id: Date.now(), front: formData.front.trim(), back: formData.back.trim(),
+          category: formData.category, box: 1, lastReviewed: null, wrongCount: 0
+        }]);
+        setFormData({ front: '', back: '', category: 'Sonstiges' });
+        setShowAddForm(false);
+      }, [formData]);
+
+      const saveEdit = useCallback(() => {
+        if (!formData.front.trim() || !formData.back.trim() || !editingCard) return;
+        setVocabulary(prev => prev.map(card =>
+          card.id === editingCard.id
+            ? { ...card, front: formData.front.trim(), back: formData.back.trim(), category: formData.category }
+            : card
+        ));
+        setEditingCard(null);
+        setFormData({ front: '', back: '', category: 'Sonstiges' });
+      }, [formData, editingCard]);
+
+      const deleteCard = useCallback((id) => {
+        const card = vocabulary.find(c => c.id === id);
+        if (card && window.confirm(`Wirklich l\u00f6schen?\n\n"${card.front}"`)) {
+          setVocabulary(prev => prev.filter(c => c.id !== id));
+        }
+      }, [vocabulary]);
+
+      // --- Reset 2-stufig ---
+      const handleResetClick = useCallback(() => { setShowResetConfirm(true); setResetStep(1); }, []);
+      const handleResetConfirm = useCallback(() => {
+        if (resetStep === 1) { setResetStep(2); }
+        else if (resetStep === 2) {
+          setVocabulary(prev => prev.map(card => ({ ...card, box: 1, lastReviewed: null, wrongCount: 0 })));
+          setCurrentCard(null); setIsFlipped(false); setSessionActive(false);
+          setShowResetConfirm(false); setResetStep(0);
+        }
+      }, [resetStep]);
+      const handleResetCancel = useCallback(() => { setShowResetConfirm(false); setResetStep(0); }, []);
+
+      // --- Export/Import ---
+      const exportData = useCallback(() => {
+        const url = URL.createObjectURL(new Blob([JSON.stringify(vocabulary, null, 2)], { type: 'application/json' }));
+        const link = document.createElement('a'); link.href = url; link.download = 'lilly-vokabeln.json'; link.click();
+        URL.revokeObjectURL(url);
+      }, [vocabulary]);
+
+      const importData = useCallback((event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (!window.confirm(`Vokabeln importieren? Alle aktuellen (${vocabulary.length}) werden ersetzt!`)) { event.target.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const imported = JSON.parse(e.target.result);
+            if (!Array.isArray(imported)) throw new Error();
+            setVocabulary(imported.map(c => ({ ...c, wrongCount: c.wrongCount ?? 0 })));
+            setCurrentCard(null); setIsFlipped(false); setSessionActive(false);
+          } catch { alert('Fehler beim Importieren!'); }
+        };
+        reader.readAsText(file); event.target.value = '';
+      }, [vocabulary.length]);
+
+      // --- Fortschritt innerhalb einer Session ---
+      const progressInfo = useMemo(() => {
+        if (!sessionActive || sessionCards.length === 0) return { current: 0, total: 0, percent: 0 };
+        const current = sessionIndex + 1;
+        const total = sessionCards.length;
+        return { current, total, percent: Math.round((current / total) * 100) };
+      }, [sessionActive, sessionCards, sessionIndex]);
+
+      // Wie viele Karten sind noch nicht in Box 5?
+      const cardsToLearn = useMemo(() => vocabulary.filter(c => c.box < 5).length, [vocabulary]);
+
+      // Vorschau: was wuerde die Session enthalten?
+      const sessionPreview = useMemo(() => {
+        const preview = { box1: 0, box2: 0, box3: 0, box4: 0 };
+        let remaining = dailyLimit;
+        for (let box = 1; box <= 4; box++) {
+          const count = vocabulary.filter(c => c.box === box).length;
+          const take = Math.min(count, remaining);
+          preview[`box${box}`] = take;
+          remaining -= take;
+          if (remaining <= 0) break;
+        }
+        return preview;
+      }, [vocabulary, dailyLimit]);
+
+      const SyncBadge = () => (
+        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+          syncStatus === 'synced' ? 'bg-green-500/20 text-green-300' :
+          syncStatus === 'connecting' ? 'bg-yellow-500/20 text-yellow-300 sync-pulse' :
+          'bg-red-500/20 text-red-300'
+        }`}>
+          {syncStatus === 'synced' ? <Icons.Cloud size={14} /> : syncStatus === 'connecting' ? <Icons.Cloud size={14} /> : <Icons.CloudOff size={14} />}
+          {syncStatus === 'synced' ? 'Synchronisiert' : syncStatus === 'connecting' ? 'Verbinde...' : 'Offline'}
+        </div>
+      );
+
+      if (!initialized) return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-800 to-rose-900 flex items-center justify-center">
+          <div className="text-center">
+            <Icons.Cloud size={64} className="text-yellow-300 mx-auto mb-4 sync-pulse" />
+            <h2 className="text-2xl font-bold text-white mb-2">Lillys Lernbox</h2>
+            <p className="text-purple-200">Daten werden geladen...</p>
+          </div>
+        </div>
+      );
+
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-800 to-rose-900 p-4 md:p-8">
+          <div className="max-w-6xl mx-auto">
+
+            <div className="text-center mb-8">
+              <h1 className="text-4xl md:text-6xl font-bold text-white mb-2 flex items-center justify-center gap-3">
+                <Icons.Sparkles size={48} className="text-yellow-300" />
+                Lillys Lernbox
+              </h1>
+              <p className="text-purple-200 text-sm md:text-lg mb-2">
+                {vocabulary.length} Vokabeln &bull; {stats.byBox[4]} in Box 5 &bull; {cardsToLearn} noch zu lernen
+              </p>
+              <SyncBadge />
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-2 shadow-2xl border border-white/20 mb-6">
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: 'learn', label: 'Lernen', IconComp: Icons.BookOpen },
+                  { key: 'manage', label: 'Verwalten', IconComp: Icons.Edit2 },
+                  { key: 'stats', label: 'Statistik', IconComp: Icons.Award },
+                ].map(tab => (
+                  <button key={tab.key}
+                    onClick={() => { setMode(tab.key); if (!sessionActive) { setCurrentCard(null); } setIsFlipped(false); }}
+                    className={`py-3 px-4 rounded-xl font-semibold transition-all ${
+                      mode === tab.key ? 'bg-yellow-400 text-purple-900' : 'bg-white/10 text-white hover:bg-white/20'
+                    }`}>
+                    <tab.IconComp size={20} className="mx-auto mb-1" />
+                    <span className="text-xs md:text-sm">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ==================== LEARN MODE ==================== */}
+            {mode === 'learn' && (
+              <div>
+                {/* Startscreen: Tagespensum waehlen */}
+                {!sessionActive && !currentCard && cardsToLearn > 0 && (
+                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20 text-center">
+                    <h2 className="text-2xl font-bold text-white mb-6">
+                      Wie viele Karten heute?
+                    </h2>
+
+                    <div className="grid grid-cols-4 gap-3 mb-6 max-w-md mx-auto">
+                      {[10, 15, 25, cardsToLearn].map(num => (
+                        <button key={num} onClick={() => setDailyLimit(Math.min(num, cardsToLearn))}
+                          className={`py-3 px-2 rounded-xl font-bold transition-all text-lg ${
+                            dailyLimit === Math.min(num, cardsToLearn)
+                              ? 'bg-yellow-400 text-purple-900 scale-105'
+                              : 'bg-white/10 text-white hover:bg-white/20'
+                          }`}>
+                          {num >= cardsToLearn ? 'Alle' : num}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Vorschau */}
+                    <div className="bg-white/5 rounded-xl p-4 mb-6 max-w-md mx-auto text-left">
+                      <p className="text-purple-200 text-sm mb-2 font-semibold">Deine Runde ({Math.min(dailyLimit, cardsToLearn)} Karten):</p>
+                      {sessionPreview.box1 > 0 && <p className="text-red-300 text-sm">&bull; {sessionPreview.box1}x aus Box 1 (Neu/Falsch)</p>}
+                      {sessionPreview.box2 > 0 && <p className="text-orange-300 text-sm">&bull; {sessionPreview.box2}x aus Box 2</p>}
+                      {sessionPreview.box3 > 0 && <p className="text-yellow-300 text-sm">&bull; {sessionPreview.box3}x aus Box 3</p>}
+                      {sessionPreview.box4 > 0 && <p className="text-lime-300 text-sm">&bull; {sessionPreview.box4}x aus Box 4</p>}
+                    </div>
+
+                    <button onClick={startLearning}
+                      className="bg-gradient-to-r from-yellow-400 to-pink-500 text-white font-bold py-4 px-8 rounded-xl hover:scale-105 transition-transform text-lg">
+                      Los geht's!
+                    </button>
+                  </div>
+                )}
+
+                {/* Alle in Box 5! */}
+                {!sessionActive && !currentCard && cardsToLearn === 0 && (
+                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20 text-center">
+                    <Icons.Award size={80} className="text-yellow-300 mx-auto mb-4" />
+                    <h2 className="text-3xl font-bold text-white mb-4">
+                      Alle {vocabulary.length} Karten in Box 5!
+                    </h2>
+                    <p className="text-purple-200 mb-6">Lilly kann alles! Super gemacht!</p>
+                    <button onClick={() => setMode('manage')}
+                      className="bg-white/20 text-white font-bold py-3 px-6 rounded-xl hover:bg-white/30 transition-all">
+                      Neue W&ouml;rter hinzuf&uuml;gen
+                    </button>
+                  </div>
+                )}
+
+                {/* Runde fertig (aber noch nicht alle in Box 5) */}
+                {!currentCard && !sessionActive && sessionCards.length > 0 && cardsToLearn > 0 && (
+                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20 text-center">
+                    <h2 className="text-3xl font-bold text-white mb-4">Runde fertig!</h2>
+                    <p className="text-purple-200 mb-2">Noch {cardsToLearn} Karten nicht in Box 5</p>
+                    <div className="flex gap-3 justify-center mt-6">
+                      <button onClick={() => { setSessionCards([]); }}
+                        className="bg-white/20 text-white font-bold py-3 px-6 rounded-xl hover:bg-white/30 transition-all">
+                        Neue Runde starten
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Karte anzeigen */}
+                {currentCard && sessionActive && (
+                  <div>
+                    <div className="mb-4">
+                      <div className="flex justify-between text-white text-sm mb-1">
+                        <span>Karte {progressInfo.current} / {progressInfo.total}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                          currentCard.box === 1 ? 'bg-red-400/30 text-red-300' :
+                          currentCard.box === 2 ? 'bg-orange-400/30 text-orange-300' :
+                          currentCard.box === 3 ? 'bg-yellow-400/30 text-yellow-300' :
+                          'bg-lime-400/30 text-lime-300'
+                        }`}>Box {currentCard.box}</span>
+                      </div>
+                      <div className="w-full bg-white/20 rounded-full h-3">
+                        <div className="bg-gradient-to-r from-yellow-400 to-pink-500 h-full rounded-full transition-all duration-500"
+                             style={{ width: `${progressInfo.percent}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="perspective-1000 mb-6">
+                      <div onClick={() => setIsFlipped(!isFlipped)}
+                        className={`relative w-full h-72 md:h-96 cursor-pointer transition-transform duration-700 preserve-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
+                        <div className="absolute w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-2xl p-8 md:p-12 flex flex-col items-center justify-center border-4 border-white/30 backface-hidden">
+                          <div className="inline-block px-4 py-1 rounded-full bg-white/30 text-white text-xs font-bold mb-4 uppercase">
+                            {currentCard.category}
+                          </div>
+                          <h2 className="text-3xl md:text-5xl font-bold text-white text-center leading-relaxed">
+                            {currentCard.front}
+                          </h2>
+                          <div className="mt-6 text-white/70 text-sm">Klicke zum Umdrehen</div>
+                        </div>
+                        <div className="absolute w-full h-full bg-gradient-to-br from-pink-500 to-orange-600 rounded-2xl shadow-2xl p-8 md:p-12 flex items-center justify-center border-4 border-white/30 backface-hidden rotate-y-180">
+                          <p className="text-2xl md:text-3xl text-white font-semibold leading-relaxed text-center">
+                            {currentCard.back}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isFlipped && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <button onClick={() => handleAnswer(false)}
+                          className="bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg text-lg">
+                          Falsch<br/><span className="text-sm opacity-80">Zur&uuml;ck in Box 1</span>
+                        </button>
+                        <button onClick={() => handleAnswer(true)}
+                          className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg text-lg">
+                          Richtig<br/><span className="text-sm opacity-80">Box {Math.min(currentCard.box + 1, 5)}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ==================== MANAGE MODE ==================== */}
+            {mode === 'manage' && (
+              <div className="space-y-4">
+                <button onClick={() => { setShowAddForm(!showAddForm); setEditingCard(null); setFormData({ front: '', back: '', category: 'Sonstiges' }); }}
+                  className="w-full bg-gradient-to-r from-yellow-400 to-pink-500 text-white font-bold py-4 px-6 rounded-xl hover:scale-105 transition-transform flex items-center justify-center gap-2">
+                  <Icons.Plus size={24} /> Neues Wort hinzuf&uuml;gen
+                </button>
+
+                {(showAddForm || editingCard) && (
+                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20">
+                    <h3 className="text-white text-xl font-bold mb-4">{editingCard ? 'Wort bearbeiten' : 'Neues Wort'}</h3>
+                    <div className="space-y-4">
+                      <input type="text" placeholder="Vorderseite (z.B. die Jacke)" value={formData.front}
+                        onChange={(e) => setFormData({ ...formData, front: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder-purple-200 border-2 border-white/30 focus:border-yellow-300 focus:outline-none" />
+                      <input type="text" placeholder="R&uuml;ckseite (z.B. die Jacken)" value={formData.back}
+                        onChange={(e) => setFormData({ ...formData, back: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-white/20 text-white placeholder-purple-200 border-2 border-white/30 focus:border-yellow-300 focus:outline-none" />
+                      <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-white/20 text-white border-2 border-white/30 focus:border-yellow-300 focus:outline-none">
+                        {['Sonstiges','Kleidung','Familie','Gegenst\u00e4nde','Verben','Adjektive','Adverb','Abstrakt'].map(cat =>
+                          <option key={cat} value={cat}>{cat}</option>
+                        )}
+                      </select>
+                      <div className="flex gap-2">
+                        <button onClick={editingCard ? saveEdit : addCard}
+                          className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-all">
+                          {editingCard ? 'Speichern' : 'Hinzuf\u00fcgen'}
+                        </button>
+                        <button onClick={() => { setShowAddForm(false); setEditingCard(null); setFormData({ front: '', back: '', category: 'Sonstiges' }); }}
+                          className="flex-1 bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-6 rounded-xl transition-all">
+                          Abbrechen
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {vocabulary.map(card => (
+                    <div key={card.id} className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20 flex items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-white font-bold text-lg truncate">{card.front}</div>
+                        <div className="text-purple-200 text-sm truncate">{card.back}</div>
+                        <div className="text-xs text-purple-300 mt-1">
+                          {card.category} &bull; <span className={
+                            card.box === 5 ? 'text-green-300 font-bold' :
+                            card.box === 1 ? 'text-red-300' : 'text-purple-300'
+                          }>Box {card.box}{card.box === 5 ? ' \u2713' : ''}</span>
+                          {card.wrongCount > 0 && <span className="ml-2 text-red-300">&bull; {card.wrongCount}x falsch</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button onClick={() => { setEditingCard(card); setFormData({ front: card.front, back: card.back, category: card.category }); setShowAddForm(false); }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition-all"><Icons.Edit2 size={20} /></button>
+                        <button onClick={() => deleteCard(card.id)}
+                          className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition-all"><Icons.Trash2 size={20} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20">
+                  <h3 className="text-white text-lg font-bold mb-4">Daten sichern</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button onClick={exportData} className="bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2">
+                      <Icons.Download size={20} /> Exportieren</button>
+                    <label className="bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
+                      <Icons.Upload size={20} /> Importieren
+                      <input type="file" accept=".json" onChange={importData} className="hidden" /></label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ==================== STATS MODE ==================== */}
+            {mode === 'stats' && (
+              <div className="space-y-6">
+                <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20">
+                  <h2 className="text-white text-2xl font-bold mb-4 flex items-center gap-2">
+                    <Icons.Award size={32} className="text-yellow-300" /> Lernfortschritt
+                  </h2>
+                  <div className="text-center mb-6">
+                    <div className="text-6xl font-bold text-yellow-300">{stats.byBox[4]}/{stats.total}</div>
+                    <div className="text-purple-200 text-lg">Karten in Box 5 (Gelernt)</div>
+                  </div>
+                  <div className="space-y-3">
+                    {[1,2,3,4,5].map(box => (
+                      <div key={box}>
+                        <div className="flex justify-between text-white text-sm mb-1">
+                          <span>Box {box} {box === 1 ? '(Neu/Falsch)' : box === 5 ? '(Gelernt!)' : ''}</span>
+                          <span>{stats.byBox[box-1]} Karten</span>
+                        </div>
+                        <div className="w-full bg-white/20 rounded-full h-4">
+                          <div className={`h-full rounded-full transition-all duration-500 ${
+                            box === 1 ? 'bg-red-400' : box === 2 ? 'bg-orange-400' :
+                            box === 3 ? 'bg-yellow-400' : box === 4 ? 'bg-lime-400' : 'bg-green-400'
+                          }`} style={{ width: stats.total > 0 ? `${(stats.byBox[box-1]/stats.total)*100}%` : '0%' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {stats.problemCards.length > 0 && (
+                  <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20">
+                    <h2 className="text-white text-2xl font-bold mb-4 flex items-center gap-2">
+                      <Icons.AlertTriangle size={28} className="text-red-400" /> Problemw&ouml;rter
+                    </h2>
+                    <div className="space-y-2">
+                      {stats.problemCards.map(card => (
+                        <div key={card.id} className="flex items-center justify-between bg-white/5 rounded-lg p-3">
+                          <div className="min-w-0 flex-1">
+                            <span className="text-white font-bold">{card.front}</span>
+                            <span className="text-purple-300 text-sm ml-2">({card.category})</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-red-400 font-bold">{card.wrongCount}x</span>
+                            <span className="text-purple-300 text-sm">Box {card.box}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!showResetConfirm ? (
+                  <button onClick={handleResetClick}
+                    className="w-full bg-white/10 backdrop-blur text-white py-4 px-6 rounded-xl hover:bg-white/20 transition-all flex items-center justify-center gap-2 font-semibold">
+                    <Icons.RotateCcw size={20} /> Alle Karten zur&uuml;cksetzen
+                  </button>
+                ) : (
+                  <div className="bg-red-900/50 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border-2 border-red-500/50">
+                    {resetStep === 1 && (
+                      <div>
+                        <h3 className="text-white text-xl font-bold mb-3 flex items-center gap-2">
+                          <Icons.AlertTriangle size={24} className="text-yellow-400" /> Wirklich zur&uuml;cksetzen?
+                        </h3>
+                        <ul className="text-purple-200 mb-4 ml-4 space-y-1">
+                          <li>&bull; Alle {stats.total} Karten zur&uuml;ck in Box 1</li>
+                          <li>&bull; Lernfortschritt + Fehler-Statistik weg</li>
+                          <li>&bull; Wird auf ALLEN Ger&auml;ten synchronisiert!</li>
+                        </ul>
+                        <div className="flex gap-3">
+                          <button onClick={handleResetConfirm} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl">Ja, weiter</button>
+                          <button onClick={handleResetCancel} className="flex-1 bg-white/20 hover:bg-white/30 text-white font-bold py-3 px-6 rounded-xl">Abbrechen</button>
+                        </div>
+                      </div>
+                    )}
+                    {resetStep === 2 && (
+                      <div>
+                        <h3 className="text-red-300 text-xl font-bold mb-3 flex items-center gap-2">
+                          <Icons.AlertTriangle size={24} className="text-red-400" /> LETZTE WARNUNG
+                        </h3>
+                        <p className="text-white text-lg mb-4">Bist du WIRKLICH sicher?</p>
+                        <div className="flex gap-3">
+                          <button onClick={handleResetConfirm} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl border-2 border-red-400">Ja, alles zur&uuml;cksetzen!</button>
+                          <button onClick={handleResetCancel} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl">Nein, behalten!</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<LillyLernbox />);
+  </script>
+</body>
+</html>

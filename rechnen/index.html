@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Lillys 1x1 Rechen-App</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Firebase SDK (compat version for script-tag usage) -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3Vkj39ylPHYRzw-DxBvYqAi1STPkPCHo",
+      authDomain: "lillymathe1x1.firebaseapp.com",
+      projectId: "lillymathe1x1",
+      storageBucket: "lillymathe1x1.firebasestorage.app",
+      messagingSenderId: "855669535952",
+      appId: "1:855669535952:web:29bf91b2f4845d3e50dad5"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header id="app-header">
+      <button id="btn-back" class="btn-icon" onclick="App.goBack()" style="display:none">
+        <span>&#8592;</span>
+      </button>
+      <h1 id="header-title">Lillys 1x1</h1>
+      <button id="btn-stats" class="btn-icon" onclick="App.navigate('stats')">
+        <span>&#9734;</span>
+      </button>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="content"></main>
+
+    <!-- Bottom Navigation -->
+    <nav id="bottom-nav">
+      <button class="nav-btn active" data-page="dashboard" onclick="App.navigate('dashboard')">
+        <span class="nav-icon">&#127968;</span>
+        <span class="nav-label">Start</span>
+      </button>
+      <button class="nav-btn" data-page="flashcards" onclick="App.navigate('flashcards')">
+        <span class="nav-icon">&#128218;</span>
+        <span class="nav-label">Lernen</span>
+      </button>
+      <button class="nav-btn" data-page="quiz" onclick="App.navigate('quiz')">
+        <span class="nav-icon">&#10067;</span>
+        <span class="nav-label">Quiz</span>
+      </button>
+      <button class="nav-btn" data-page="license" onclick="App.navigate('license')">
+        <span class="nav-icon">&#127942;</span>
+        <span class="nav-label">Schein</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <script src="app.js"></script>
+</body>
+</html>

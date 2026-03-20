@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Datum lernen - Lilly's Lernwelt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Nunito', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      padding: 0;
+    }
+
+    /* Header */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.1);
+    }
+    .btn-home {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-title { color: white; font-size: 18px; font-weight: 800; }
+    .header-score {
+      color: white; font-size: 14px; font-weight: 700;
+      background: rgba(255,255,255,0.2);
+      padding: 6px 12px; border-radius: 20px;
+    }
+
+    /* Menu */
+    #menu-screen { padding: 24px 16px; max-width: 500px; margin: 0 auto; }
+    .menu-title {
+      color: white; font-size: 24px; font-weight: 900;
+      text-align: center; margin-bottom: 24px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .level-card {
+      background: white; border-radius: 16px; padding: 20px;
+      margin-bottom: 12px; cursor: pointer; transition: transform 0.2s;
+      display: flex; align-items: center; gap: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .level-card:active { transform: scale(0.97); }
+    .level-icon { font-size: 36px; }
+    .level-info { flex: 1; }
+    .level-name { font-size: 16px; font-weight: 800; color: #1f2937; }
+    .level-desc { font-size: 13px; color: #6b7280; font-weight: 600; }
+
+    /* Game screen */
+    #game-screen { display: none; padding: 16px; max-width: 500px; margin: 0 auto; }
+
+    /* Calendar visual */
+    .calendar-visual {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin: 16px 0;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .cal-month {
+      background: #059669;
+      color: white;
+      padding: 8px;
+      border-radius: 10px 10px 0 0;
+      font-size: 18px;
+      font-weight: 800;
+      margin: -20px -20px 12px -20px;
+    }
+    .cal-day {
+      font-size: 56px;
+      font-weight: 900;
+      color: #1f2937;
+    }
+    .cal-weekday {
+      font-size: 16px;
+      color: #6b7280;
+      font-weight: 700;
+    }
+
+    /* Question */
+    .question-text {
+      color: white; font-size: 20px; font-weight: 800;
+      text-align: center; margin-bottom: 20px;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      line-height: 1.4;
+    }
+
+    /* Text Input */
+    .text-input {
+      width: 100%; max-width: 340px; height: 56px;
+      border-radius: 16px; border: 3px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.15); color: white;
+      font-family: 'Nunito', sans-serif; font-size: 20px;
+      font-weight: 700; text-align: center; outline: none;
+      margin: 0 auto 20px; display: block;
+    }
+    .text-input:focus { border-color: white; background: rgba(255,255,255,0.25); }
+    .text-input::placeholder { color: rgba(255,255,255,0.4); }
+
+    /* Number Input Row */
+    .number-input-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; margin-bottom: 20px;
+    }
+    .num-field {
+      width: 60px; height: 56px; border-radius: 16px;
+      border: 3px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.15); color: white;
+      font-family: 'Nunito', sans-serif; font-size: 24px;
+      font-weight: 800; text-align: center; outline: none;
+      -webkit-appearance: none; -moz-appearance: textfield;
+    }
+    .num-field:focus { border-color: white; background: rgba(255,255,255,0.25); }
+    .num-separator { color: white; font-size: 28px; font-weight: 900; }
+
+    /* Multiple choice */
+    .choices-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; margin-bottom: 20px;
+    }
+    .choices-grid.single-col { grid-template-columns: 1fr; }
+    .choice-btn {
+      padding: 16px; border-radius: 16px;
+      border: 3px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.1); color: white;
+      font-family: 'Nunito', sans-serif; font-size: 17px;
+      font-weight: 700; cursor: pointer; transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .choice-btn:active { transform: scale(0.96); }
+    .choice-btn.correct { background: #10b981; border-color: #10b981; }
+    .choice-btn.wrong { background: #ef4444; border-color: #ef4444; }
+
+    /* Submit */
+    .btn-check {
+      display: block; width: 100%; padding: 16px;
+      border: none; border-radius: 16px; background: white;
+      color: #059669; font-family: 'Nunito', sans-serif;
+      font-size: 18px; font-weight: 800; cursor: pointer;
+    }
+    .btn-check:disabled { opacity: 0.5; }
+
+    /* Feedback */
+    .feedback {
+      text-align: center; padding: 16px; border-radius: 16px;
+      margin-bottom: 16px; font-size: 18px; font-weight: 700; display: none;
+    }
+    .feedback.show { display: block; }
+    .feedback.correct-fb { background: rgba(16,185,129,0.3); color: #a7f3d0; }
+    .feedback.wrong-fb { background: rgba(239,68,68,0.3); color: #fca5a5; }
+
+    /* Progress */
+    .progress-bar {
+      height: 8px; background: rgba(255,255,255,0.2);
+      border-radius: 4px; margin-bottom: 16px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: white; border-radius: 4px; transition: width 0.3s;
+    }
+
+    /* Result Screen */
+    #result-screen {
+      display: none; padding: 40px 16px; text-align: center;
+      max-width: 500px; margin: 0 auto;
+    }
+    .result-emoji { font-size: 72px; margin-bottom: 16px; }
+    .result-title { color: white; font-size: 28px; font-weight: 900; margin-bottom: 8px; }
+    .result-score { color: rgba(255,255,255,0.8); font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .result-stars { font-size: 36px; margin-bottom: 24px; }
+    .btn-again {
+      display: inline-block; padding: 16px 40px; border: none;
+      border-radius: 16px; background: white; color: #059669;
+      font-family: 'Nunito', sans-serif; font-size: 18px;
+      font-weight: 800; cursor: pointer; margin: 8px;
+    }
+    .btn-menu {
+      display: inline-block; padding: 16px 40px;
+      border: 2px solid rgba(255,255,255,0.4); border-radius: 16px;
+      background: transparent; color: white;
+      font-family: 'Nunito', sans-serif; font-size: 18px;
+      font-weight: 800; cursor: pointer; margin: 8px;
+    }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <div class="app-header">
+    <a href="../" class="btn-home">&#8592;</a>
+    <span class="header-title">&#128197; Datum lernen</span>
+    <span class="header-score" id="header-score">0/0</span>
+  </div>
+
+  <!-- MENU -->
+  <div id="menu-screen">
+    <h1 class="menu-title">Was möchtest du üben?</h1>
+
+    <div class="level-card" onclick="DatumApp.startLevel('kurzform')">
+      <div class="level-icon">&#128221;</div>
+      <div class="level-info">
+        <div class="level-name">Datum in Kurzform</div>
+        <div class="level-desc">3.4.2022, 15.1.2024...</div>
+      </div>
+    </div>
+
+    <div class="level-card" onclick="DatumApp.startLevel('langform')">
+      <div class="level-icon">&#128220;</div>
+      <div class="level-info">
+        <div class="level-name">Datum in Langform</div>
+        <div class="level-desc">19. Oktober 2016...</div>
+      </div>
+    </div>
+
+    <div class="level-card" onclick="DatumApp.startLevel('wochentag')">
+      <div class="level-icon">&#128197;</div>
+      <div class="level-info">
+        <div class="level-name">Wochentage</div>
+        <div class="level-desc">Gestern, heute, morgen...</div>
+      </div>
+    </div>
+
+    <div class="level-card" onclick="DatumApp.startLevel('tage')">
+      <div class="level-icon">&#128290;</div>
+      <div class="level-info">
+        <div class="level-name">Tage pro Monat</div>
+        <div class="level-desc">Jänner 31, Februar 28/29...</div>
+      </div>
+    </div>
+
+    <div class="level-card" onclick="DatumApp.startLevel('reihenfolge')">
+      <div class="level-icon">&#128260;</div>
+      <div class="level-info">
+        <div class="level-name">Monatsreihenfolge</div>
+        <div class="level-desc">Welcher Monat kommt vor/nach...?</div>
+      </div>
+    </div>
+
+    <div class="level-card" onclick="DatumApp.startLevel('raetsel')">
+      <div class="level-icon">&#129300;</div>
+      <div class="level-info">
+        <div class="level-name">Datum-Rätsel</div>
+        <div class="level-desc">Heute ist der 31. Dez., morgen ist...?</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-screen">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div id="visual-area"></div>
+    <div class="question-text" id="question-text"></div>
+    <div id="answer-area"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="btn-check" id="btn-check" onclick="DatumApp.checkAnswer()">Prüfen</button>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result-screen">
+    <div class="result-emoji" id="result-emoji"></div>
+    <div class="result-title" id="result-title"></div>
+    <div class="result-score" id="result-score"></div>
+    <div class="result-stars" id="result-stars"></div>
+    <button class="btn-again" onclick="DatumApp.restartLevel()">Nochmal</button>
+    <button class="btn-menu" onclick="DatumApp.showMenu()">Zurueck</button>
+  </div>
+
+  <script>
+    // Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCOxoBSjEF6VydbYWp7GDiDBxnSB8HvJgA",
+      authDomain: "lilly-lernbox-9fcf9.firebaseapp.com",
+      databaseURL: "https://lilly-lernbox-9fcf9-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "lilly-lernbox-9fcf9",
+      storageBucket: "lilly-lernbox-9fcf9.firebasestorage.app",
+      messagingSenderId: "467753183092",
+      appId: "1:467753183092:web:e799c7b262ce5d56252e21"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const ROUNDS = 10;
+
+    const MONATE = ['Jänner','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+    const MONATE_TAGE = [31,28,31,30,31,30,31,31,30,31,30,31];
+    const WOCHENTAGE = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+
+    const DatumApp = {
+      level: null,
+      questions: [],
+      current: 0,
+      correct: 0,
+      total: 0,
+      answered: false,
+
+      randInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      },
+
+      shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+      },
+
+      // ===== Question Generators =====
+
+      // Level 1: Kurzform - show long date, type short
+      genKurzform() {
+        const d = this.randInt(1, 28);
+        const m = this.randInt(0, 11);
+        const y = this.randInt(2020, 2026);
+        return {
+          type: 'date-input',
+          question: 'Schreibe das Datum in Kurzform:',
+          displayText: d + '. ' + MONATE[m] + ' ' + y,
+          answer: { d: d, m: m + 1, y: y },
+          showCalendar: { day: d, month: MONATE[m], weekday: '' }
+        };
+      },
+
+      // Level 2: Langform - show short date, pick long
+      genLangform() {
+        const d = this.randInt(1, 28);
+        const m = this.randInt(0, 11);
+        const y = this.randInt(2018, 2026);
+        const correctAnswer = d + '. ' + MONATE[m] + ' ' + y;
+        // Generate wrong answers
+        const wrongMonths = MONATE.filter((_, i) => i !== m);
+        this.shuffle(wrongMonths);
+        const choices = [
+          correctAnswer,
+          d + '. ' + wrongMonths[0] + ' ' + y,
+          this.randInt(1,28) + '. ' + MONATE[m] + ' ' + y,
+          d + '. ' + wrongMonths[1] + ' ' + (y + 1)
+        ];
+        this.shuffle(choices);
+        return {
+          type: 'choice',
+          question: 'Wie heißt' + d + '.' + (m+1) + '.' + y + ' in Langform?',
+          choices: choices,
+          correctIndex: choices.indexOf(correctAnswer),
+          explanation: 'Richtig: ' + correctAnswer,
+          singleCol: true
+        };
+      },
+
+      // Level 3: Wochentage
+      genWochentag() {
+        const todayIdx = this.randInt(0, 6);
+        const variants = [
+          { q: 'Heute ist ' + WOCHENTAGE[todayIdx] + '. Welcher Tag war gestern?', a: WOCHENTAGE[(todayIdx + 6) % 7] },
+          { q: 'Heute ist ' + WOCHENTAGE[todayIdx] + '. Welcher Tag ist morgen?', a: WOCHENTAGE[(todayIdx + 1) % 7] },
+          { q: 'Heute ist ' + WOCHENTAGE[todayIdx] + '. Welcher Tag ist übermorgen?', a: WOCHENTAGE[(todayIdx + 2) % 7] },
+          { q: 'Heute ist ' + WOCHENTAGE[todayIdx] + '. Welcher Tag war vorgestern?', a: WOCHENTAGE[(todayIdx + 5) % 7] }
+        ];
+        const v = variants[this.randInt(0, variants.length - 1)];
+
+        const wrongDays = WOCHENTAGE.filter(d => d !== v.a);
+        this.shuffle(wrongDays);
+        const choices = [v.a, wrongDays[0], wrongDays[1], wrongDays[2]];
+        this.shuffle(choices);
+
+        return {
+          type: 'choice',
+          question: v.q,
+          choices: choices,
+          correctIndex: choices.indexOf(v.a),
+          explanation: 'Richtig: ' + v.a
+        };
+      },
+
+      // Level 4: Tage pro Monat
+      genTage() {
+        const m = this.randInt(0, 11);
+        const correctDays = MONATE_TAGE[m];
+        const displayDays = m === 1 ? '28 (oder 29)' : String(correctDays);
+        const choices = ['28','29','30','31'];
+        if (m === 1) {
+          // February special
+          const ch = ['28 oder 29', '30', '31', '27'];
+          this.shuffle(ch);
+          return {
+            type: 'choice',
+            question: 'Wie viele Tage hat der ' + MONATE[m] + '?',
+            choices: ch,
+            correctIndex: ch.indexOf('28 oder 29'),
+            explanation: 'Der Februar hat 28 Tage, im Schaltjahr 29!'
+          };
+        }
+        const wrongChoices = choices.filter(c => parseInt(c) !== correctDays);
+        this.shuffle(wrongChoices);
+        const ch = [String(correctDays), wrongChoices[0], wrongChoices[1]];
+        // Add one more
+        ch.push(correctDays === 31 ? '29' : '31');
+        this.shuffle(ch);
+        return {
+          type: 'choice',
+          question: 'Wie viele Tage hat der ' + MONATE[m] + '?',
+          choices: ch,
+          correctIndex: ch.indexOf(String(correctDays)),
+          explanation: 'Der ' + MONATE[m] + ' hat ' + correctDays + ' Tage.'
+        };
+      },
+
+      // Level 5: Monatsreihenfolge
+      genReihenfolge() {
+        const m = this.randInt(0, 11);
+        const askBefore = Math.random() > 0.5;
+        let correctAnswer, question;
+
+        if (askBefore) {
+          const before = (m + 11) % 12;
+          correctAnswer = MONATE[before];
+          question = 'Welcher Monat kommt VOR dem ' + MONATE[m] + '?';
+        } else {
+          const after = (m + 1) % 12;
+          correctAnswer = MONATE[after];
+          question = 'Welcher Monat kommt NACH dem ' + MONATE[m] + '?';
+        }
+
+        const wrong = MONATE.filter(x => x !== correctAnswer && x !== MONATE[m]);
+        this.shuffle(wrong);
+        const choices = [correctAnswer, wrong[0], wrong[1], wrong[2]];
+        this.shuffle(choices);
+
+        return {
+          type: 'choice',
+          question: question,
+          choices: choices,
+          correctIndex: choices.indexOf(correctAnswer),
+          explanation: 'Richtig: ' + correctAnswer
+        };
+      },
+
+      // Level 6: Raetsel
+      genRaetsel() {
+        const raetsel = [
+          { q: 'Heute ist der 31. Dezember. Welches Datum ist morgen?', a: '1. Jänner', wrong: ['31. Jänner', '1. Februar', '30. Dezember'] },
+          { q: 'Heute ist der 28. Februar (kein Schaltjahr). Welches Datum ist morgen?', a: '1. März', wrong: ['29. Februar', '28. März', '2. März'] },
+          { q: 'Heute ist der 30. April. Welches Datum ist morgen?', a: '1. Mai', wrong: ['31. April', '1. April', '2. Mai'] },
+          { q: 'Heute ist der 1. März. Welches Datum war gestern?', a: '28. oder 29. Februar', wrong: ['30. Februar', '1. Februar', '28. März'] },
+          { q: 'Heute ist der 1. Jänner. Welches Datum war gestern?', a: '31. Dezember', wrong: ['30. Dezember', '1. Dezember', '31. Jänner'] },
+          { q: 'Heute ist Mittwoch der 15. Welcher Wochentag ist der 22.?', a: 'Mittwoch', wrong: ['Donnerstag', 'Dienstag', 'Freitag'] },
+          { q: 'Der 3. Oktober ist ein Freitag. Welcher Wochentag ist der 10. Oktober?', a: 'Freitag', wrong: ['Samstag', 'Donnerstag', 'Mittwoch'] },
+          { q: 'Wie viele Monate haben 31 Tage?', a: '7', wrong: ['6', '5', '8'] },
+          { q: 'Welcher ist der kürzeste Monat im Jahr?', a: 'Februar', wrong: ['März', 'April', 'Juni'] },
+          { q: 'Wie viele Tage hat ein normales Jahr?', a: '365', wrong: ['366', '364', '360'] },
+          { q: 'Wie viele Tage hat ein Schaltjahr?', a: '366', wrong: ['365', '367', '364'] },
+          { q: 'Heute ist Sonntag der 5. Welcher Wochentag ist der 1.?', a: 'Mittwoch', wrong: ['Dienstag', 'Donnerstag', 'Montag'] },
+        ];
+
+        const r = raetsel[this.randInt(0, raetsel.length - 1)];
+        const choices = [r.a, ...r.wrong];
+        this.shuffle(choices);
+
+        return {
+          type: 'choice',
+          question: r.q,
+          choices: choices,
+          correctIndex: choices.indexOf(r.a),
+          explanation: 'Richtig: ' + r.a,
+          singleCol: true
+        };
+      },
+
+      generateQuestions(level) {
+        const q = [];
+        for (let i = 0; i < ROUNDS; i++) {
+          switch(level) {
+            case 'kurzform': q.push(this.genKurzform()); break;
+            case 'langform': q.push(this.genLangform()); break;
+            case 'wochentag': q.push(this.genWochentag()); break;
+            case 'tage': q.push(this.genTage()); break;
+            case 'reihenfolge': q.push(this.genReihenfolge()); break;
+            case 'raetsel': q.push(this.genRaetsel()); break;
+          }
+        }
+        return q;
+      },
+
+      // ===== Game Flow =====
+      startLevel(level) {
+        this.level = level;
+        this.questions = this.generateQuestions(level);
+        this.current = 0;
+        this.correct = 0;
+        this.total = 0;
+        this.answered = false;
+
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+        document.getElementById('result-screen').style.display = 'none';
+        this.showQuestion();
+      },
+
+      showQuestion() {
+        const q = this.questions[this.current];
+        this.answered = false;
+
+        document.getElementById('progress-fill').style.width = Math.round(this.current / ROUNDS * 100) + '%';
+        document.getElementById('header-score').textContent = this.correct + '/' + this.total;
+
+        // Visual area (calendar)
+        const vis = document.getElementById('visual-area');
+        if (q.showCalendar) {
+          vis.innerHTML =
+            '<div class="calendar-visual">' +
+            '<div class="cal-month">' + q.showCalendar.month + '</div>' +
+            '<div class="cal-day">' + q.showCalendar.day + '</div>' +
+            (q.showCalendar.weekday ? '<div class="cal-weekday">' + q.showCalendar.weekday + '</div>' : '') +
+            '</div>';
+        } else if (q.displayText) {
+          vis.innerHTML = '<div class="calendar-visual"><div class="cal-day" style="font-size:28px">' + q.displayText + '</div></div>';
+        } else {
+          vis.innerHTML = '';
+        }
+
+        document.getElementById('question-text').textContent = q.question;
+
+        const area = document.getElementById('answer-area');
+        const fb = document.getElementById('feedback');
+        fb.className = 'feedback';
+        fb.style.display = 'none';
+
+        const btnCheck = document.getElementById('btn-check');
+        btnCheck.style.display = 'block';
+        btnCheck.disabled = false;
+
+        if (q.type === 'date-input') {
+          area.innerHTML =
+            '<div class="number-input-row">' +
+            '<input type="number" class="num-field" id="input-d" placeholder="T" min="1" max="31" inputmode="numeric">' +
+            '<span class="num-separator">.</span>' +
+            '<input type="number" class="num-field" id="input-m" placeholder="M" min="1" max="12" inputmode="numeric">' +
+            '<span class="num-separator">.</span>' +
+            '<input type="number" class="num-field" id="input-y" placeholder="JJJJ" min="2000" max="2030" inputmode="numeric" style="width:80px">' +
+            '</div>';
+          const dF = document.getElementById('input-d');
+          const mF = document.getElementById('input-m');
+          const yF = document.getElementById('input-y');
+          setTimeout(() => dF.focus(), 100);
+          dF.addEventListener('input', function() { if (this.value.length >= 2) mF.focus(); });
+          mF.addEventListener('input', function() { if (this.value.length >= 2) yF.focus(); });
+          yF.addEventListener('keydown', function(e) { if (e.key === 'Enter') DatumApp.checkAnswer(); });
+        } else if (q.type === 'choice') {
+          let html = '<div class="choices-grid' + (q.singleCol ? ' single-col' : '') + '">';
+          q.choices.forEach((c, i) => {
+            html += '<button class="choice-btn" data-idx="'+i+'" onclick="DatumApp.selectChoice('+i+')">'+c+'</button>';
+          });
+          html += '</div>';
+          area.innerHTML = html;
+          btnCheck.style.display = 'none';
+        }
+      },
+
+      selectChoice(idx) {
+        if (this.answered) return;
+        this.answered = true;
+        const q = this.questions[this.current];
+        const btns = document.querySelectorAll('.choice-btn');
+
+        btns.forEach((b, i) => {
+          if (i === q.correctIndex) b.classList.add('correct');
+          if (i === idx && idx !== q.correctIndex) b.classList.add('wrong');
+          b.style.pointerEvents = 'none';
+        });
+
+        const isCorrect = idx === q.correctIndex;
+        this.total++;
+        if (isCorrect) this.correct++;
+
+        this.showFeedback(isCorrect, q.explanation || (isCorrect ? 'Richtig!' : 'Richtig wäre:' + q.choices[q.correctIndex]));
+        document.getElementById('header-score').textContent = this.correct + '/' + this.total;
+        setTimeout(() => this.nextQuestion(), 1500);
+      },
+
+      checkAnswer() {
+        if (this.answered) return;
+        const q = this.questions[this.current];
+        this.answered = true;
+        let isCorrect = false;
+
+        if (q.type === 'date-input') {
+          const dVal = parseInt(document.getElementById('input-d').value);
+          const mVal = parseInt(document.getElementById('input-m').value);
+          const yVal = parseInt(document.getElementById('input-y').value);
+          isCorrect = (dVal === q.answer.d && mVal === q.answer.m && yVal === q.answer.y);
+          const correctStr = q.answer.d + '.' + q.answer.m + '.' + q.answer.y;
+          this.showFeedback(isCorrect, isCorrect ? 'Super!' : 'Richtig wäre:' + correctStr);
+        }
+
+        this.total++;
+        if (isCorrect) this.correct++;
+        document.getElementById('header-score').textContent = this.correct + '/' + this.total;
+        document.getElementById('btn-check').disabled = true;
+        setTimeout(() => this.nextQuestion(), 1500);
+      },
+
+      showFeedback(correct, text) {
+        const fb = document.getElementById('feedback');
+        fb.innerHTML = (correct ? '&#10004; ' : '&#10008; ') + text;
+        fb.className = 'feedback show ' + (correct ? 'correct-fb' : 'wrong-fb');
+      },
+
+      nextQuestion() {
+        this.current++;
+        if (this.current >= ROUNDS) {
+          this.showResult();
+        } else {
+          this.showQuestion();
+        }
+      },
+
+      showResult() {
+        document.getElementById('game-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+
+        const pct = Math.round(this.correct / this.total * 100);
+        const stars = pct >= 95 ? 5 : pct >= 80 ? 4 : pct >= 60 ? 3 : pct >= 40 ? 2 : pct > 0 ? 1 : 0;
+
+        let emoji = '&#127881;', title = 'Super gemacht!';
+        if (pct >= 90) { emoji = '&#127942;'; title = 'Fantastisch!'; }
+        else if (pct >= 70) { emoji = '&#128079;'; title = 'Gut gemacht!'; }
+        else if (pct >= 50) { emoji = '&#128170;'; title = 'Weiter ueben!'; }
+        else { emoji = '&#128522;'; title = 'Das wird schon!'; }
+
+        document.getElementById('result-emoji').innerHTML = emoji;
+        document.getElementById('result-title').textContent = title;
+        document.getElementById('result-score').textContent = this.correct + ' von ' + this.total + ' richtig (' + pct + '%)';
+
+        let starsHtml = '';
+        for (let i = 0; i < 5; i++) starsHtml += i < stars ? '&#11088;' : '&#9734;';
+        document.getElementById('result-stars').innerHTML = starsHtml;
+
+        this.saveStats(this.correct, this.total);
+      },
+
+      saveStats(correct, total) {
+        const today = new Date();
+        const key = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+        const timeStr = String(today.getHours()).padStart(2,'0') + ':' + String(today.getMinutes()).padStart(2,'0');
+        const ref = db.ref('stats/lilly/datum/' + key);
+
+        ref.once('value').then(snap => {
+          const existing = snap.val() || { correct: 0, total: 0 };
+          ref.set({
+            correct: existing.correct + correct,
+            total: existing.total + total,
+            lastTime: timeStr
+          });
+        }).catch(() => {});
+      },
+
+      restartLevel() { this.startLevel(this.level); },
+
+      showMenu() {
+        document.getElementById('game-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'none';
+        document.getElementById('menu-screen').style.display = 'block';
+      }
+    };
+  </script>
+</body>
+</html>

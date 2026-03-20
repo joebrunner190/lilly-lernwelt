@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Uhr lernen - Lilly's Lernwelt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Nunito', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      padding: 0;
+    }
+
+    /* Header */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.1);
+    }
+    .btn-home {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-title {
+      color: white;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .header-score {
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      background: rgba(255,255,255,0.2);
+      padding: 6px 12px;
+      border-radius: 20px;
+    }
+
+    /* Menu */
+    #menu-screen {
+      padding: 24px 16px;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .menu-title {
+      color: white;
+      font-size: 24px;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 24px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .level-card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: transform 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .level-card:active { transform: scale(0.97); }
+    .level-icon { font-size: 36px; }
+    .level-info { flex: 1; }
+    .level-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: #1f2937;
+    }
+    .level-desc {
+      font-size: 13px;
+      color: #6b7280;
+      font-weight: 600;
+    }
+    .level-badge {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 10px;
+      background: #e5e7eb;
+      color: #6b7280;
+    }
+    .level-badge.done {
+      background: #d1fae5;
+      color: #059669;
+    }
+
+    /* Game screen */
+    #game-screen { display: none; padding: 16px; max-width: 500px; margin: 0 auto; }
+
+    /* Clock SVG */
+    .clock-container {
+      display: flex;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    .clock-svg {
+      width: 240px;
+      height: 240px;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2));
+    }
+
+    /* Question */
+    .question-text {
+      color: white;
+      font-size: 20px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 20px;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    /* Time Input */
+    .time-input-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .time-field {
+      width: 80px;
+      height: 64px;
+      border-radius: 16px;
+      border: 3px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.15);
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      text-align: center;
+      outline: none;
+      -webkit-appearance: none;
+      -moz-appearance: textfield;
+    }
+    .time-field:focus { border-color: white; background: rgba(255,255,255,0.25); }
+    .time-field::placeholder { color: rgba(255,255,255,0.4); }
+    .time-separator {
+      color: white;
+      font-size: 36px;
+      font-weight: 900;
+    }
+
+    /* Multiple choice */
+    .choices-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .choice-btn {
+      padding: 16px;
+      border-radius: 16px;
+      border: 3px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.1);
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .choice-btn:active { transform: scale(0.96); }
+    .choice-btn.correct {
+      background: #10b981;
+      border-color: #10b981;
+    }
+    .choice-btn.wrong {
+      background: #ef4444;
+      border-color: #ef4444;
+    }
+
+    /* Submit */
+    .btn-check {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 16px;
+      background: white;
+      color: #1d4ed8;
+      font-family: 'Nunito', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .btn-check:active { transform: scale(0.97); }
+    .btn-check:disabled { opacity: 0.5; }
+
+    /* Feedback */
+    .feedback {
+      text-align: center;
+      padding: 16px;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      font-size: 18px;
+      font-weight: 700;
+      display: none;
+    }
+    .feedback.show { display: block; }
+    .feedback.correct-fb {
+      background: rgba(16, 185, 129, 0.2);
+      color: #6ee7b7;
+    }
+    .feedback.wrong-fb {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+    }
+
+    /* Progress */
+    .progress-bar {
+      height: 8px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: white;
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+
+    /* Result Screen */
+    #result-screen {
+      display: none;
+      padding: 40px 16px;
+      text-align: center;
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .result-emoji { font-size: 72px; margin-bottom: 16px; }
+    .result-title {
+      color: white;
+      font-size: 28px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+    .result-score {
+      color: rgba(255,255,255,0.8);
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .result-stars {
+      font-size: 36px;
+      margin-bottom: 24px;
+    }
+    .result-detail {
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      margin-bottom: 24px;
+      font-weight: 600;
+    }
+    .btn-again {
+      display: inline-block;
+      padding: 16px 40px;
+      border: none;
+      border-radius: 16px;
+      background: white;
+      color: #1d4ed8;
+      font-family: 'Nunito', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      margin: 8px;
+    }
+    .btn-menu {
+      display: inline-block;
+      padding: 16px 40px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 16px;
+      background: transparent;
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      margin: 8px;
+    }
+
+    /* Word input for text answers */
+    .text-input {
+      width: 100%;
+      max-width: 300px;
+      height: 56px;
+      border-radius: 16px;
+      border: 3px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.15);
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      text-align: center;
+      outline: none;
+      margin: 0 auto 20px;
+      display: block;
+    }
+    .text-input:focus { border-color: white; background: rgba(255,255,255,0.25); }
+    .text-input::placeholder { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <div class="app-header">
+    <a href="../" class="btn-home">&#8592;</a>
+    <span class="header-title">&#128336; Uhr lernen</span>
+    <span class="header-score" id="header-score">0/0</span>
+  </div>
+
+  <!-- MENU -->
+  <div id="menu-screen">
+    <h1 class="menu-title">Was möchtest du üben?</h1>
+
+    <div class="level-card" onclick="UhrApp.startLevel('read')">
+      <div class="level-icon">&#128336;</div>
+      <div class="level-info">
+        <div class="level-name">Uhr ablesen</div>
+        <div class="level-desc">Zeiger lesen &amp; Uhrzeit eingeben</div>
+      </div>
+      <div class="level-badge" id="badge-read">Start</div>
+    </div>
+
+    <div class="level-card" onclick="UhrApp.startLevel('digital')">
+      <div class="level-icon">&#128290;</div>
+      <div class="level-info">
+        <div class="level-name">Digitalzeit</div>
+        <div class="level-desc">Uhrzeit im Digitalformat schreiben</div>
+      </div>
+      <div class="level-badge" id="badge-digital">Start</div>
+    </div>
+
+    <div class="level-card" onclick="UhrApp.startLevel('hands')">
+      <div class="level-icon">&#9757;</div>
+      <div class="level-info">
+        <div class="level-name">Zeiger erkennen</div>
+        <div class="level-desc">Stunden- oder Minutenzeiger?</div>
+      </div>
+      <div class="level-badge" id="badge-hands">Start</div>
+    </div>
+
+    <div class="level-card" onclick="UhrApp.startLevel('words')">
+      <div class="level-icon">&#128172;</div>
+      <div class="level-info">
+        <div class="level-name">Volle, halbe &amp; viertel Stunden</div>
+        <div class="level-desc">halb vier, viertel nach acht...</div>
+      </div>
+      <div class="level-badge" id="badge-words">Start</div>
+    </div>
+
+    <div class="level-card" onclick="UhrApp.startLevel('fivemin')">
+      <div class="level-icon">&#9201;</div>
+      <div class="level-info">
+        <div class="level-name">5-Minuten-Schritte</div>
+        <div class="level-desc">7:35, 10:55, 21:15...</div>
+      </div>
+      <div class="level-badge" id="badge-fivemin">Start</div>
+    </div>
+
+    <div class="level-card" onclick="UhrApp.startLevel('format24')">
+      <div class="level-icon">&#127764;</div>
+      <div class="level-info">
+        <div class="level-name">24-Stunden-Format</div>
+        <div class="level-desc">18:30, 22:15, 13:45...</div>
+      </div>
+      <div class="level-badge" id="badge-format24">Start</div>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-screen">
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+
+    <div class="clock-container" id="clock-container">
+      <svg class="clock-svg" viewBox="0 0 240 240" id="clock-svg"></svg>
+    </div>
+
+    <div class="question-text" id="question-text"></div>
+    <div id="answer-area"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="btn-check" id="btn-check" onclick="UhrApp.checkAnswer()">Prüfen</button>
+  </div>
+
+  <!-- RESULT -->
+  <div id="result-screen">
+    <div class="result-emoji" id="result-emoji"></div>
+    <div class="result-title" id="result-title"></div>
+    <div class="result-score" id="result-score"></div>
+    <div class="result-stars" id="result-stars"></div>
+    <div class="result-detail" id="result-detail"></div>
+    <button class="btn-again" id="btn-again" onclick="UhrApp.restartLevel()">Nochmal</button>
+    <button class="btn-menu" onclick="UhrApp.showMenu()">Zurück</button>
+  </div>
+
+  <script>
+    // Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyCOxoBSjEF6VydbYWp7GDiDBxnSB8HvJgA",
+      authDomain: "lilly-lernbox-9fcf9.firebaseapp.com",
+      databaseURL: "https://lilly-lernbox-9fcf9-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "lilly-lernbox-9fcf9",
+      storageBucket: "lilly-lernbox-9fcf9.firebasestorage.app",
+      messagingSenderId: "467753183092",
+      appId: "1:467753183092:web:e799c7b262ce5d56252e21"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const ROUNDS = 10;
+
+    const UhrApp = {
+      level: null,
+      questions: [],
+      current: 0,
+      correct: 0,
+      total: 0,
+      answered: false,
+
+      // ===== Draw Clock =====
+      drawClock(hours, minutes, opts = {}) {
+        const svg = document.getElementById('clock-svg');
+        const cx = 120, cy = 120, r = 100;
+
+        // Show/hide certain hands
+        const showHour = opts.hideHour !== true;
+        const showMinute = opts.hideMinute !== true;
+        const highlightHour = opts.highlightHour || false;
+        const highlightMinute = opts.highlightMinute || false;
+
+        let html = '';
+        // Clock face
+        html += '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="white" stroke="#1e3a5f" stroke-width="4"/>';
+
+        // Minute marks
+        for (let i = 0; i < 60; i++) {
+          const angle = (i * 6 - 90) * Math.PI / 180;
+          const inner = i % 5 === 0 ? r - 15 : r - 8;
+          const outer = r - 3;
+          const w = i % 5 === 0 ? 2.5 : 1;
+          html += '<line x1="'+(cx + inner*Math.cos(angle))+'" y1="'+(cy + inner*Math.sin(angle))+'" x2="'+(cx + outer*Math.cos(angle))+'" y2="'+(cy + outer*Math.sin(angle))+'" stroke="#1e3a5f" stroke-width="'+w+'" stroke-linecap="round"/>';
+        }
+
+        // Hour numbers
+        for (let i = 1; i <= 12; i++) {
+          const angle = (i * 30 - 90) * Math.PI / 180;
+          const nx = cx + (r - 28) * Math.cos(angle);
+          const ny = cy + (r - 28) * Math.sin(angle);
+          html += '<text x="'+nx+'" y="'+ny+'" text-anchor="middle" dominant-baseline="central" font-family="Nunito,sans-serif" font-size="18" font-weight="800" fill="#1e3a5f">'+i+'</text>';
+        }
+
+        // Hour hand (red/short)
+        if (showHour) {
+          const hAngle = ((hours % 12) * 30 + minutes * 0.5 - 90) * Math.PI / 180;
+          const hLen = 55;
+          const hColor = highlightHour ? '#ef4444' : '#dc2626';
+          const hWidth = highlightHour ? 7 : 5;
+          html += '<line x1="'+cx+'" y1="'+cy+'" x2="'+(cx + hLen*Math.cos(hAngle))+'" y2="'+(cy + hLen*Math.sin(hAngle))+'" stroke="'+hColor+'" stroke-width="'+hWidth+'" stroke-linecap="round"/>';
+          if (highlightHour) {
+            html += '<text x="'+(cx + (hLen+15)*Math.cos(hAngle))+'" y="'+(cy + (hLen+15)*Math.sin(hAngle))+'" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="800" fill="#dc2626">Std</text>';
+          }
+        }
+
+        // Minute hand (blue/long)
+        if (showMinute) {
+          const mAngle = (minutes * 6 - 90) * Math.PI / 180;
+          const mLen = 80;
+          const mColor = highlightMinute ? '#3b82f6' : '#2563eb';
+          const mWidth = highlightMinute ? 5 : 3;
+          html += '<line x1="'+cx+'" y1="'+cy+'" x2="'+(cx + mLen*Math.cos(mAngle))+'" y2="'+(cy + mLen*Math.sin(mAngle))+'" stroke="'+mColor+'" stroke-width="'+mWidth+'" stroke-linecap="round"/>';
+          if (highlightMinute) {
+            html += '<text x="'+(cx + (mLen+12)*Math.cos(mAngle))+'" y="'+(cy + (mLen+12)*Math.sin(mAngle))+'" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="800" fill="#2563eb">Min</text>';
+          }
+        }
+
+        // Center dot
+        html += '<circle cx="'+cx+'" cy="'+cy+'" r="5" fill="#1e3a5f"/>';
+        svg.innerHTML = html;
+      },
+
+      // ===== Generate Questions =====
+      generateQuestions(level) {
+        const q = [];
+        for (let i = 0; i < ROUNDS; i++) {
+          switch(level) {
+            case 'read':
+              q.push(this.genRead()); break;
+            case 'digital':
+              q.push(this.genDigital()); break;
+            case 'hands':
+              q.push(this.genHands()); break;
+            case 'words':
+              q.push(this.genWords()); break;
+            case 'fivemin':
+              q.push(this.genFiveMin()); break;
+            case 'format24':
+              q.push(this.genFormat24()); break;
+          }
+        }
+        return q;
+      },
+
+      randInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+      },
+
+      // Level 1: Read analog clock -> type time
+      genRead() {
+        const h = this.randInt(1, 12);
+        const mOptions = [0, 15, 30, 45, 5, 10, 20, 25, 35, 40, 50, 55];
+        const m = mOptions[this.randInt(0, mOptions.length - 1)];
+        return {
+          type: 'time-input',
+          hours: h, minutes: m,
+          question: 'Wie spät ist es?',
+          answer: { h: h, m: m },
+          clockOpts: {}
+        };
+      },
+
+      // Level 2: Show text time, type digital
+      genDigital() {
+        const h = this.randInt(1, 12);
+        const mOptions = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+        const m = mOptions[this.randInt(0, mOptions.length - 1)];
+        const hStr = String(h);
+        const mStr = String(m).padStart(2, '0');
+        return {
+          type: 'time-input',
+          hours: h, minutes: m,
+          question: 'Schreibe die Uhrzeit: ' + hStr + ':' + mStr + ' Uhr',
+          answer: { h: h, m: m },
+          clockOpts: {},
+          showClock: false
+        };
+      },
+
+      // Level 3: Which hand is hour/minute?
+      genHands() {
+        const h = this.randInt(1, 12);
+        const m = [0,15,30,45][this.randInt(0,3)];
+        const askHour = Math.random() > 0.5;
+        const choices = askHour
+          ? ['Der kurze rote Zeiger', 'Der lange blaue Zeiger']
+          : ['Der lange blaue Zeiger', 'Der kurze rote Zeiger'];
+        return {
+          type: 'choice',
+          hours: h, minutes: m,
+          question: askHour ? 'Welcher Zeiger zeigt die Stunden?' : 'Welcher Zeiger zeigt die Minuten?',
+          choices: choices,
+          correctIndex: 0,
+          clockOpts: { highlightHour: true, highlightMinute: true },
+          explanation: askHour
+            ? 'Der kurze rote Zeiger zeigt die Stunden!'
+            : 'Der lange blaue Zeiger zeigt die Minuten!'
+        };
+      },
+
+      // Level 4: Word time (halb, viertel)
+      genWords() {
+        const templates = [
+          { h: 3, m: 0, word: '3 Uhr', alt: ['drei Uhr'] },
+          { h: 6, m: 30, word: 'halb 7', alt: ['halb sieben'] },
+          { h: 2, m: 30, word: 'halb 3', alt: ['halb drei'] },
+          { h: 9, m: 30, word: 'halb 10', alt: ['halb zehn'] },
+          { h: 4, m: 15, word: 'viertel nach 4', alt: ['viertel nach vier'] },
+          { h: 7, m: 15, word: 'viertel nach 7', alt: ['viertel nach sieben'] },
+          { h: 5, m: 45, word: 'viertel vor 6', alt: ['dreiviertel 6', 'dreiviertel sechs'] },
+          { h: 8, m: 45, word: 'viertel vor 9', alt: ['dreiviertel 9', 'dreiviertel neun'] },
+          { h: 12, m: 0, word: '12 Uhr', alt: ['zwölf Uhr'] },
+          { h: 10, m: 30, word: 'halb 11', alt: ['halb elf'] },
+          { h: 1, m: 15, word: 'viertel nach 1', alt: ['viertel nach eins'] },
+          { h: 11, m: 45, word: 'viertel vor 12', alt: ['dreiviertel 12'] },
+        ];
+        const t = templates[this.randInt(0, templates.length - 1)];
+
+        // Multiple choice: pick correct + 3 wrong
+        const wrongOptions = templates.filter(x => x.word !== t.word).map(x => x.word);
+        this.shuffle(wrongOptions);
+        const choices = [t.word, wrongOptions[0], wrongOptions[1], wrongOptions[2]];
+        this.shuffle(choices);
+
+        return {
+          type: 'choice',
+          hours: t.h, minutes: t.m,
+          question: 'Wie sagt man diese Uhrzeit?',
+          choices: choices,
+          correctIndex: choices.indexOf(t.word),
+          clockOpts: {},
+          explanation: 'Richtig: ' + t.word
+        };
+      },
+
+      // Level 5: 5-minute intervals
+      genFiveMin() {
+        const h = this.randInt(1, 12);
+        const m = this.randInt(0, 11) * 5;
+        return {
+          type: 'time-input',
+          hours: h, minutes: m,
+          question: 'Wie spät ist es? (5-Minuten-Schritte)',
+          answer: { h: h, m: m },
+          clockOpts: {}
+        };
+      },
+
+      // Level 6: 24h format
+      genFormat24() {
+        const h12 = this.randInt(1, 12);
+        const m = [0, 15, 30, 45, 5, 10, 20, 25, 35, 40, 50, 55][this.randInt(0, 11)];
+        const isPM = Math.random() > 0.4;
+        const h24 = isPM ? (h12 === 12 ? 12 : h12 + 12) : (h12 === 12 ? 0 : h12);
+        const displayTime = h12 + ':' + String(m).padStart(2, '0');
+
+        return {
+          type: 'time-input-24',
+          hours: h12, minutes: m,
+          h24: h24,
+          question: isPM
+            ? 'Es ist ' + displayTime + ' Uhr nachmittags. Schreibe im 24h-Format:'
+            : 'Es ist ' + displayTime + ' Uhr vormittags. Schreibe im 24h-Format:',
+          answer: { h: h24, m: m },
+          clockOpts: {}
+        };
+      },
+
+      shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+      },
+
+      // ===== Game Flow =====
+      startLevel(level) {
+        this.level = level;
+        this.questions = this.generateQuestions(level);
+        this.current = 0;
+        this.correct = 0;
+        this.total = 0;
+        this.answered = false;
+
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('game-screen').style.display = 'block';
+        document.getElementById('result-screen').style.display = 'none';
+        this.showQuestion();
+      },
+
+      showQuestion() {
+        const q = this.questions[this.current];
+        this.answered = false;
+
+        // Progress
+        document.getElementById('progress-fill').style.width = Math.round(this.current / ROUNDS * 100) + '%';
+        document.getElementById('header-score').textContent = this.correct + '/' + this.total;
+
+        // Clock
+        const clockContainer = document.getElementById('clock-container');
+        if (q.showClock === false) {
+          clockContainer.style.display = 'none';
+        } else {
+          clockContainer.style.display = 'flex';
+          this.drawClock(q.hours, q.minutes, q.clockOpts || {});
+        }
+
+        // Question
+        document.getElementById('question-text').textContent = q.question;
+
+        // Answer area
+        const area = document.getElementById('answer-area');
+        const fb = document.getElementById('feedback');
+        fb.className = 'feedback';
+        fb.style.display = 'none';
+
+        const btnCheck = document.getElementById('btn-check');
+        btnCheck.style.display = 'block';
+        btnCheck.disabled = false;
+        btnCheck.textContent = 'Prüfen';
+
+        if (q.type === 'time-input' || q.type === 'time-input-24') {
+          area.innerHTML =
+            '<div class="time-input-row">' +
+            '<input type="number" class="time-field" id="input-h" placeholder="HH" min="0" max="23" inputmode="numeric">' +
+            '<span class="time-separator">:</span>' +
+            '<input type="number" class="time-field" id="input-m" placeholder="MM" min="0" max="59" inputmode="numeric">' +
+            '</div>';
+          // Auto-focus & auto-tab
+          const hField = document.getElementById('input-h');
+          const mField = document.getElementById('input-m');
+          setTimeout(() => hField.focus(), 100);
+          hField.addEventListener('input', function() {
+            if (this.value.length >= 2) mField.focus();
+          });
+          mField.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') UhrApp.checkAnswer();
+          });
+        } else if (q.type === 'choice') {
+          let html = '<div class="choices-grid">';
+          q.choices.forEach((c, i) => {
+            html += '<button class="choice-btn" data-idx="'+i+'" onclick="UhrApp.selectChoice('+i+')">'+c+'</button>';
+          });
+          html += '</div>';
+          area.innerHTML = html;
+          btnCheck.style.display = 'none'; // auto-check on choice
+        } else if (q.type === 'text-input') {
+          area.innerHTML = '<input type="text" class="text-input" id="input-text" placeholder="Antwort eingeben" autocomplete="off">';
+          setTimeout(() => document.getElementById('input-text').focus(), 100);
+        }
+      },
+
+      selectChoice(idx) {
+        if (this.answered) return;
+        this.answered = true;
+        const q = this.questions[this.current];
+        const btns = document.querySelectorAll('.choice-btn');
+
+        btns.forEach((b, i) => {
+          if (i === q.correctIndex) b.classList.add('correct');
+          if (i === idx && idx !== q.correctIndex) b.classList.add('wrong');
+          b.style.pointerEvents = 'none';
+        });
+
+        const isCorrect = idx === q.correctIndex;
+        this.total++;
+        if (isCorrect) this.correct++;
+
+        this.showFeedback(isCorrect, q.explanation || (isCorrect ? 'Richtig!' : 'Die richtige Antwort ist: ' + q.choices[q.correctIndex]));
+        document.getElementById('header-score').textContent = this.correct + '/' + this.total;
+
+        setTimeout(() => this.nextQuestion(), 1500);
+      },
+
+      checkAnswer() {
+        if (this.answered) return;
+        const q = this.questions[this.current];
+        this.answered = true;
+        let isCorrect = false;
+
+        if (q.type === 'time-input' || q.type === 'time-input-24') {
+          const hVal = parseInt(document.getElementById('input-h').value);
+          const mVal = parseInt(document.getElementById('input-m').value);
+          isCorrect = (hVal === q.answer.h && mVal === q.answer.m);
+          const correctStr = q.answer.h + ':' + String(q.answer.m).padStart(2, '0') + ' Uhr';
+          this.showFeedback(isCorrect, isCorrect ? 'Super!' : 'Richtig wäre:' + correctStr);
+        }
+
+        this.total++;
+        if (isCorrect) this.correct++;
+        document.getElementById('header-score').textContent = this.correct + '/' + this.total;
+        document.getElementById('btn-check').disabled = true;
+
+        setTimeout(() => this.nextQuestion(), 1500);
+      },
+
+      showFeedback(correct, text) {
+        const fb = document.getElementById('feedback');
+        fb.textContent = (correct ? '&#10004; ' : '&#10008; ') + text;
+        fb.innerHTML = (correct ? '&#10004; ' : '&#10008; ') + text;
+        fb.className = 'feedback show ' + (correct ? 'correct-fb' : 'wrong-fb');
+      },
+
+      nextQuestion() {
+        this.current++;
+        if (this.current >= ROUNDS) {
+          this.showResult();
+        } else {
+          this.showQuestion();
+        }
+      },
+
+      // ===== Results =====
+      showResult() {
+        document.getElementById('game-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+
+        const pct = Math.round(this.correct / this.total * 100);
+        const stars = pct >= 95 ? 5 : pct >= 80 ? 4 : pct >= 60 ? 3 : pct >= 40 ? 2 : pct > 0 ? 1 : 0;
+
+        let emoji = '&#127881;';
+        let title = 'Super gemacht!';
+        if (pct >= 90) { emoji = '&#127942;'; title = 'Fantastisch!'; }
+        else if (pct >= 70) { emoji = '&#128079;'; title = 'Gut gemacht!'; }
+        else if (pct >= 50) { emoji = '&#128170;'; title = 'Weiter üben!'; }
+        else { emoji = '&#128522;'; title = 'Das wird schon!'; }
+
+        document.getElementById('result-emoji').innerHTML = emoji;
+        document.getElementById('result-title').textContent = title;
+        document.getElementById('result-score').textContent = this.correct + ' von ' + this.total + ' richtig (' + pct + '%)';
+
+        let starsHtml = '';
+        for (let i = 0; i < 5; i++) {
+          starsHtml += i < stars ? '&#11088;' : '&#9734;';
+        }
+        document.getElementById('result-stars').innerHTML = starsHtml;
+
+        // Save to Firebase
+        this.saveStats(this.correct, this.total);
+      },
+
+      saveStats(correct, total) {
+        const today = new Date();
+        const key = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+        const timeStr = String(today.getHours()).padStart(2,'0') + ':' + String(today.getMinutes()).padStart(2,'0');
+        const ref = db.ref('stats/lilly/uhr/' + key);
+
+        ref.once('value').then(snap => {
+          const existing = snap.val() || { correct: 0, total: 0 };
+          ref.set({
+            correct: existing.correct + correct,
+            total: existing.total + total,
+            lastTime: timeStr
+          });
+        }).catch(() => {});
+      },
+
+      restartLevel() {
+        this.startLevel(this.level);
+      },
+
+      showMenu() {
+        document.getElementById('game-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'none';
+        document.getElementById('menu-screen').style.display = 'block';
+      }
+    };
+  </script>
+</body>
+</html>

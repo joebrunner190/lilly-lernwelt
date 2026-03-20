@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Lilly's Lernwelt</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Nunito', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    /* ===== LOGIN SCREEN ===== */
+    #login-screen {
+      background: white;
+      border-radius: 24px;
+      padding: 40px 32px;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    #login-screen h1 {
+      font-size: 28px;
+      font-weight: 900;
+      color: #4c1d95;
+      margin-bottom: 8px;
+    }
+    #login-screen .subtitle {
+      color: #7c3aed;
+      font-size: 16px;
+      margin-bottom: 32px;
+    }
+    .login-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .login-tab {
+      flex: 1;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      background: white;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #6b7280;
+    }
+    .login-tab.active {
+      border-color: #7c3aed;
+      background: #f5f3ff;
+      color: #7c3aed;
+    }
+    .login-tab:hover { border-color: #7c3aed; }
+    .login-avatar {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+    .pin-display {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    .pin-dot {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 3px solid #d1d5db;
+      background: white;
+      transition: all 0.2s;
+    }
+    .pin-dot.filled {
+      background: #7c3aed;
+      border-color: #7c3aed;
+    }
+    .pin-dot.error {
+      background: #ef4444;
+      border-color: #ef4444;
+      animation: shake 0.4s ease;
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+    }
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+    .numpad button {
+      height: 60px;
+      border-radius: 16px;
+      border: 2px solid #e5e7eb;
+      background: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      color: #374151;
+      cursor: pointer;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .numpad button:active {
+      background: #7c3aed;
+      color: white;
+      border-color: #7c3aed;
+      transform: scale(0.95);
+    }
+    .numpad .btn-del {
+      font-size: 18px;
+      color: #ef4444;
+    }
+    /* Password input for parents */
+    .password-input {
+      width: 100%;
+      padding: 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 18px;
+      text-align: center;
+      margin-bottom: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .password-input:focus { border-color: #7c3aed; }
+    .btn-login {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7c3aed, #6d28d9);
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .btn-login:active { transform: scale(0.97); }
+    .login-error {
+      color: #ef4444;
+      font-size: 14px;
+      font-weight: 600;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+
+    /* ===== PORTAL SCREEN ===== */
+    #portal-screen { display: none; width: 100%; max-width: 500px; }
+    .portal-header {
+      text-align: center;
+      color: white;
+      margin-bottom: 24px;
+    }
+    .portal-header h1 {
+      font-size: 26px;
+      font-weight: 900;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .portal-header .greeting {
+      font-size: 18px;
+      opacity: 0.9;
+      margin-bottom: 8px;
+    }
+    .streak-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 15px;
+      font-weight: 700;
+      color: white;
+      margin-top: 8px;
+    }
+    .module-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .module-card {
+      background: white;
+      border-radius: 20px;
+      padding: 24px 16px;
+      text-align: center;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      transition: transform 0.2s;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .module-card:active { transform: scale(0.96); }
+    .module-icon {
+      font-size: 48px;
+      margin-bottom: 8px;
+    }
+    .module-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+    .module-stars {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      font-size: 18px;
+    }
+    .star-filled { color: #f59e0b; }
+    .star-empty { color: #d1d5db; }
+    .module-score {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    /* Eltern-Button */
+    .btn-eltern {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 16px;
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 12px;
+    }
+    .btn-eltern:active { background: rgba(255,255,255,0.25); }
+    .btn-logout {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 12px;
+      color: rgba(255,255,255,0.7);
+      font-family: 'Nunito', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ===== DASHBOARD SCREEN ===== */
+    #dashboard-screen {
+      display: none;
+      width: 100%;
+      max-width: 500px;
+    }
+    .dash-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .dash-header h2 {
+      color: white;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    .btn-back {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-size: 20px;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+    }
+    .dash-card {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .dash-card h3 {
+      font-size: 16px;
+      font-weight: 800;
+      color: #4c1d95;
+      margin-bottom: 12px;
+    }
+    .dash-stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .dash-stat-row:last-child { border-bottom: none; }
+    .dash-stat-label {
+      font-size: 14px;
+      color: #6b7280;
+      font-weight: 600;
+    }
+    .dash-stat-value {
+      font-size: 14px;
+      font-weight: 800;
+      color: #1f2937;
+    }
+    .dash-stat-value.weak { color: #ef4444; }
+    .dash-stat-value.good { color: #10b981; }
+    .dash-stat-value.medium { color: #f59e0b; }
+    .dash-week-bar {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .day-bar {
+      flex: 1;
+      text-align: center;
+    }
+    .day-bar-fill {
+      height: 60px;
+      border-radius: 6px;
+      background: #e5e7eb;
+      position: relative;
+      overflow: hidden;
+    }
+    .day-bar-fill .fill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, #7c3aed, #a78bfa);
+      border-radius: 6px;
+      transition: height 0.5s;
+    }
+    .day-bar-label {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <!-- LOGIN -->
+  <div id="login-screen">
+    <h1>Lilly's Lernwelt</h1>
+    <p class="subtitle">Willkommen zum Lernen!</p>
+
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="Portal.switchLoginTab('lilly')">Lilly</button>
+      <button class="login-tab" onclick="Portal.switchLoginTab('eltern')">Eltern</button>
+    </div>
+
+    <!-- Lilly PIN Login -->
+    <div id="lilly-login">
+      <div class="login-avatar">👧</div>
+      <div class="pin-display">
+        <div class="pin-dot" id="dot0"></div>
+        <div class="pin-dot" id="dot1"></div>
+        <div class="pin-dot" id="dot2"></div>
+        <div class="pin-dot" id="dot3"></div>
+      </div>
+      <div class="numpad">
+        <button onclick="Portal.pinInput(1)">1</button>
+        <button onclick="Portal.pinInput(2)">2</button>
+        <button onclick="Portal.pinInput(3)">3</button>
+        <button onclick="Portal.pinInput(4)">4</button>
+        <button onclick="Portal.pinInput(5)">5</button>
+        <button onclick="Portal.pinInput(6)">6</button>
+        <button onclick="Portal.pinInput(7)">7</button>
+        <button onclick="Portal.pinInput(8)">8</button>
+        <button onclick="Portal.pinInput(9)">9</button>
+        <button class="btn-del" onclick="Portal.pinDelete()">&#9003;</button>
+        <button onclick="Portal.pinInput(0)">0</button>
+        <button style="visibility:hidden"></button>
+      </div>
+      <div class="login-error" id="pin-error"></div>
+    </div>
+
+    <!-- Eltern Password Login -->
+    <div id="eltern-login" style="display:none">
+      <div class="login-avatar">👨‍👩‍👧</div>
+      <input type="password" class="password-input" id="eltern-password" placeholder="Passwort eingeben" autocomplete="off">
+      <button class="btn-login" onclick="Portal.elternLogin()">Einloggen</button>
+      <div class="login-error" id="pw-error"></div>
+    </div>
+  </div>
+
+  <!-- PORTAL -->
+  <div id="portal-screen">
+    <div class="portal-header">
+      <div class="greeting" id="greeting-text">Hallo Lilly!</div>
+      <h1>Lilly's Lernwelt</h1>
+      <div class="streak-badge" id="streak-badge" style="display:none">
+        <span>&#128293;</span>
+        <span id="streak-text">0 Tage in Folge</span>
+      </div>
+    </div>
+
+    <div class="module-grid">
+      <a class="module-card" href="lernkarten/" id="card-lernkarten">
+        <div class="module-icon">&#128218;</div>
+        <div class="module-name">Lernkarten</div>
+        <div class="module-stars" id="stars-lernkarten"></div>
+        <div class="module-score" id="score-lernkarten"></div>
+      </a>
+      <a class="module-card" href="rechnen/" id="card-rechnen">
+        <div class="module-icon">&#10006;&#247;</div>
+        <div class="module-name">Rechnen</div>
+        <div class="module-stars" id="stars-rechnen"></div>
+        <div class="module-score" id="score-rechnen"></div>
+      </a>
+      <a class="module-card" href="uhr/" id="card-uhr">
+        <div class="module-icon">&#128336;</div>
+        <div class="module-name">Uhr</div>
+        <div class="module-stars" id="stars-uhr"></div>
+        <div class="module-score" id="score-uhr"></div>
+      </a>
+      <a class="module-card" href="datum/" id="card-datum">
+        <div class="module-icon">&#128197;</div>
+        <div class="module-name">Datum</div>
+        <div class="module-stars" id="stars-datum"></div>
+        <div class="module-score" id="score-datum"></div>
+      </a>
+    </div>
+
+    <button class="btn-eltern" id="btn-eltern-dash" onclick="Portal.showDashboard()">
+      &#128202; Eltern-Dashboard
+    </button>
+    <button class="btn-logout" onclick="Portal.logout()">Abmelden</button>
+  </div>
+
+  <!-- ELTERN DASHBOARD -->
+  <div id="dashboard-screen">
+    <div class="dash-header">
+      <button class="btn-back" onclick="Portal.hideDashboard()">&#8592;</button>
+      <h2>Eltern-Dashboard</h2>
+      <div style="width:44px"></div>
+    </div>
+
+    <div class="dash-card">
+      <h3>&#128293; Aktivit&auml;t diese Woche</h3>
+      <div class="dash-week-bar" id="week-bars"></div>
+    </div>
+
+    <div class="dash-card" id="dash-modules"></div>
+
+    <div class="dash-card">
+      <h3>&#9888;&#65039; Schwache Bereiche</h3>
+      <div id="dash-weak"></div>
+    </div>
+
+    <div class="dash-card">
+      <h3>&#128340; Letzte Aktivit&auml;t</h3>
+      <div id="dash-last-activity"></div>
+    </div>
+
+    <button class="btn-logout" onclick="Portal.logout()" style="margin-top:8px; color:rgba(255,255,255,0.7);">Abmelden</button>
+  </div>
+
+  <script>
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyCOxoBSjEF6VydbYWp7GDiDBxnSB8HvJgA",
+      authDomain: "lilly-lernbox-9fcf9.firebaseapp.com",
+      databaseURL: "https://lilly-lernbox-9fcf9-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "lilly-lernbox-9fcf9",
+      storageBucket: "lilly-lernbox-9fcf9.firebasestorage.app",
+      messagingSenderId: "467753183092",
+      appId: "1:467753183092:web:e799c7b262ce5d56252e21"
+    };
+
+    // Only init if not already initialized
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+
+    // ===== USERS CONFIG =====
+    const USERS = {
+      lilly: { pin: '1234', role: 'child', name: 'Lilly' },
+      josef: { password: 'josef2024', role: 'parent', name: 'Josef' },
+      mitzi: { password: 'mitzi2024', role: 'parent', name: 'Mitzi' }
+    };
+
+    const MODULES = ['lernkarten', 'rechnen', 'uhr', 'datum'];
+    const MODULE_LABELS = {
+      lernkarten: 'Lernkarten',
+      rechnen: 'Rechnen',
+      uhr: 'Uhr',
+      datum: 'Datum'
+    };
+
+    // ===== PORTAL APP =====
+    const Portal = {
+      pin: '',
+      currentUser: null,
+
+      // --- Login ---
+      switchLoginTab(tab) {
+        document.querySelectorAll('.login-tab').forEach((el, i) => {
+          el.classList.toggle('active', (tab === 'lilly' && i === 0) || (tab === 'eltern' && i === 1));
+        });
+        document.getElementById('lilly-login').style.display = tab === 'lilly' ? 'block' : 'none';
+        document.getElementById('eltern-login').style.display = tab === 'eltern' ? 'block' : 'none';
+        this.pinReset();
+        document.getElementById('pw-error').textContent = '';
+        document.getElementById('pin-error').textContent = '';
+      },
+
+      pinInput(num) {
+        if (this.pin.length >= 4) return;
+        this.pin += num;
+        this.updateDots();
+        if (this.pin.length === 4) {
+          setTimeout(() => this.checkPin(), 200);
+        }
+      },
+
+      pinDelete() {
+        this.pin = this.pin.slice(0, -1);
+        this.updateDots();
+        document.getElementById('pin-error').textContent = '';
+        document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('error'));
+      },
+
+      pinReset() {
+        this.pin = '';
+        this.updateDots();
+      },
+
+      updateDots() {
+        for (let i = 0; i < 4; i++) {
+          const dot = document.getElementById('dot' + i);
+          dot.classList.toggle('filled', i < this.pin.length);
+          dot.classList.remove('error');
+        }
+      },
+
+      checkPin() {
+        if (this.pin === USERS.lilly.pin) {
+          this.currentUser = 'lilly';
+          this.showPortal();
+        } else {
+          document.querySelectorAll('.pin-dot').forEach(d => d.classList.add('error'));
+          document.getElementById('pin-error').textContent = 'Falscher PIN!';
+          setTimeout(() => this.pinReset(), 800);
+        }
+      },
+
+      elternLogin() {
+        const pw = document.getElementById('eltern-password').value.trim();
+        let user = null;
+        if (pw === USERS.josef.password) user = 'josef';
+        else if (pw === USERS.mitzi.password) user = 'mitzi';
+
+        if (user) {
+          this.currentUser = user;
+          this.showPortal();
+        } else {
+          document.getElementById('pw-error').textContent = 'Falsches Passwort!';
+        }
+      },
+
+      // --- Portal ---
+      showPortal() {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('portal-screen').style.display = 'block';
+        const u = USERS[this.currentUser];
+        document.getElementById('greeting-text').textContent = 'Hallo ' + u.name + '!';
+
+        // Show/hide Eltern button
+        const isParent = u.role === 'parent';
+        document.getElementById('btn-eltern-dash').style.display = isParent ? 'block' : 'none';
+
+        this.loadStats();
+      },
+
+      logout() {
+        this.currentUser = null;
+        this.pin = '';
+        this.pinReset();
+        document.getElementById('eltern-password').value = '';
+        document.getElementById('login-screen').style.display = 'block';
+        document.getElementById('portal-screen').style.display = 'none';
+        document.getElementById('dashboard-screen').style.display = 'none';
+        document.getElementById('pw-error').textContent = '';
+        document.getElementById('pin-error').textContent = '';
+        this.switchLoginTab('lilly');
+      },
+
+      // --- Stats & Stars ---
+      loadStats() {
+        const today = this.dateKey();
+        db.ref('stats/lilly').once('value').then(snap => {
+          const data = snap.val() || {};
+          this.renderStars(data, today);
+          this.renderStreak(data);
+        }).catch(() => {
+          // Offline fallback - show empty stars
+          this.renderStars({}, today);
+        });
+      },
+
+      renderStars(data, today) {
+        MODULES.forEach(mod => {
+          const modData = (data[mod] && data[mod][today]) || {};
+          const correct = modData.correct || 0;
+          const total = modData.total || 0;
+          const stars = this.calcStars(correct, total);
+
+          const starsEl = document.getElementById('stars-' + mod);
+          const scoreEl = document.getElementById('score-' + mod);
+
+          let html = '';
+          for (let i = 0; i < 5; i++) {
+            html += '<span class="' + (i < stars ? 'star-filled' : 'star-empty') + '">&#9733;</span>';
+          }
+          starsEl.innerHTML = html;
+          scoreEl.textContent = total > 0 ? (correct + '/' + total + ' richtig') : 'Noch nicht geübt';
+        });
+      },
+
+      calcStars(correct, total) {
+        if (total === 0) return 0;
+        const pct = correct / total;
+        if (pct >= 0.95) return 5;
+        if (pct >= 0.8) return 4;
+        if (pct >= 0.6) return 3;
+        if (pct >= 0.4) return 2;
+        if (pct > 0) return 1;
+        return 0;
+      },
+
+      renderStreak(data) {
+        let streak = 0;
+        const d = new Date();
+        d.setDate(d.getDate()); // start from today
+
+        for (let i = 0; i < 365; i++) {
+          const key = this.dateKeyFromDate(d);
+          let hadActivity = false;
+          MODULES.forEach(mod => {
+            if (data[mod] && data[mod][key] && data[mod][key].total > 0) {
+              hadActivity = true;
+            }
+          });
+          if (hadActivity) {
+            streak++;
+            d.setDate(d.getDate() - 1);
+          } else if (i === 0) {
+            // Today might not have activity yet, check yesterday
+            d.setDate(d.getDate() - 1);
+          } else {
+            break;
+          }
+        }
+
+        const badge = document.getElementById('streak-badge');
+        if (streak > 0) {
+          badge.style.display = 'inline-flex';
+          document.getElementById('streak-text').textContent = streak + (streak === 1 ? ' Tag' : ' Tage') + ' in Folge!';
+        } else {
+          badge.style.display = 'none';
+        }
+      },
+
+      // --- Dashboard ---
+      showDashboard() {
+        document.getElementById('portal-screen').style.display = 'none';
+        document.getElementById('dashboard-screen').style.display = 'block';
+        this.loadDashboard();
+      },
+
+      hideDashboard() {
+        document.getElementById('dashboard-screen').style.display = 'none';
+        document.getElementById('portal-screen').style.display = 'block';
+      },
+
+      loadDashboard() {
+        db.ref('stats/lilly').once('value').then(snap => {
+          const data = snap.val() || {};
+          this.renderWeekBars(data);
+          this.renderDashModules(data);
+          this.renderWeakAreas(data);
+          this.renderLastActivity(data);
+        }).catch(() => {
+          document.getElementById('dash-modules').innerHTML = '<p style="color:#6b7280;font-size:14px;">Keine Daten verfuegbar</p>';
+        });
+      },
+
+      renderWeekBars(data) {
+        const container = document.getElementById('week-bars');
+        const days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+        const today = new Date();
+        const dayOfWeek = (today.getDay() + 6) % 7; // Monday = 0
+
+        let html = '';
+        let maxTotal = 1;
+        const dailyTotals = [];
+
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(today);
+          d.setDate(d.getDate() - dayOfWeek + i);
+          const key = this.dateKeyFromDate(d);
+          let dayTotal = 0;
+          MODULES.forEach(mod => {
+            if (data[mod] && data[mod][key]) {
+              dayTotal += data[mod][key].total || 0;
+            }
+          });
+          dailyTotals.push(dayTotal);
+          if (dayTotal > maxTotal) maxTotal = dayTotal;
+        }
+
+        for (let i = 0; i < 7; i++) {
+          const pct = Math.round((dailyTotals[i] / maxTotal) * 100);
+          html += '<div class="day-bar">';
+          html += '<div class="day-bar-fill"><div class="fill" style="height:' + pct + '%"></div></div>';
+          html += '<div class="day-bar-label">' + days[i] + '</div>';
+          html += '</div>';
+        }
+        container.innerHTML = html;
+      },
+
+      renderDashModules(data) {
+        const container = document.getElementById('dash-modules');
+        const today = this.dateKey();
+        let html = '<h3>&#11088; Module heute</h3>';
+
+        MODULES.forEach(mod => {
+          const todayData = (data[mod] && data[mod][today]) || {};
+          const correct = todayData.correct || 0;
+          const total = todayData.total || 0;
+          const stars = this.calcStars(correct, total);
+          const pct = total > 0 ? Math.round(correct / total * 100) : 0;
+          const cls = pct >= 70 ? 'good' : pct >= 40 ? 'medium' : total > 0 ? 'weak' : '';
+
+          html += '<div class="dash-stat-row">';
+          html += '<span class="dash-stat-label">' + MODULE_LABELS[mod] + '</span>';
+          html += '<span class="dash-stat-value ' + cls + '">';
+          if (total > 0) {
+            html += correct + '/' + total + ' (' + pct + '%) ';
+            for (let i = 0; i < stars; i++) html += '&#9733;';
+          } else {
+            html += '&mdash;';
+          }
+          html += '</span></div>';
+        });
+
+        container.innerHTML = html;
+      },
+
+      renderWeakAreas(data) {
+        const container = document.getElementById('dash-weak');
+        const last7 = this.getLast7DaysKeys();
+        let weakAreas = [];
+
+        MODULES.forEach(mod => {
+          let correct = 0, total = 0;
+          last7.forEach(key => {
+            if (data[mod] && data[mod][key]) {
+              correct += data[mod][key].correct || 0;
+              total += data[mod][key].total || 0;
+            }
+          });
+          if (total > 0) {
+            const pct = Math.round(correct / total * 100);
+            if (pct < 60) {
+              weakAreas.push({ mod, pct });
+            }
+          }
+        });
+
+        if (weakAreas.length === 0) {
+          container.innerHTML = '<div class="dash-stat-row"><span class="dash-stat-label">Alles gut!</span><span class="dash-stat-value good">&#128077;</span></div>';
+        } else {
+          let html = '';
+          weakAreas.sort((a, b) => a.pct - b.pct);
+          weakAreas.forEach(w => {
+            html += '<div class="dash-stat-row">';
+            html += '<span class="dash-stat-label">' + MODULE_LABELS[w.mod] + '</span>';
+            html += '<span class="dash-stat-value weak">' + w.pct + '% richtig</span>';
+            html += '</div>';
+          });
+          container.innerHTML = html;
+        }
+      },
+
+      renderLastActivity(data) {
+        const container = document.getElementById('dash-last-activity');
+        let html = '';
+
+        MODULES.forEach(mod => {
+          const modData = data[mod] || {};
+          const dates = Object.keys(modData).sort().reverse();
+          let lastDate = null;
+          let lastTime = null;
+
+          for (const key of dates) {
+            if (modData[key] && modData[key].total > 0) {
+              lastDate = key;
+              lastTime = modData[key].lastTime || null;
+              break;
+            }
+          }
+
+          html += '<div class="dash-stat-row">';
+          html += '<span class="dash-stat-label">' + MODULE_LABELS[mod] + '</span>';
+          if (lastDate) {
+            const parts = lastDate.split('-');
+            const formatted = parts[2] + '.' + parts[1] + '.' + parts[0];
+            html += '<span class="dash-stat-value">' + formatted + (lastTime ? ' ' + lastTime : '') + '</span>';
+          } else {
+            html += '<span class="dash-stat-value">&mdash;</span>';
+          }
+          html += '</div>';
+        });
+
+        container.innerHTML = html;
+      },
+
+      // --- Helpers ---
+      dateKey() {
+        return this.dateKeyFromDate(new Date());
+      },
+
+      dateKeyFromDate(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+      },
+
+      getLast7DaysKeys() {
+        const keys = [];
+        const d = new Date();
+        for (let i = 0; i < 7; i++) {
+          keys.push(this.dateKeyFromDate(d));
+          d.setDate(d.getDate() - 1);
+        }
+        return keys;
+      }
+    };
+
+    // Enter key for password
+    document.getElementById('eltern-password').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') Portal.elternLogin();
+    });
+  </script>
+</body>
+</html>
