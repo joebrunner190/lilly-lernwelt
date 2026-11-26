@@ -50,7 +50,8 @@ const Wortstand = (() => {
       day.lastTime = date.toLocaleTimeString('de-AT', {hour:'2-digit',minute:'2-digit'});
       for (const answer of round.answers) {
         const prev = words.get(answer.word);
-        words.set(answer.word, { streak: answer.correct ? (prev?.streak || 0)+1 : 0, time: round.time });
+        const rightDays = answer.correct ? (prev?.rightDays || 0) + (prev?.day===key && prev.streak>0 ? 0 : 1) : 0;
+        words.set(answer.word, { streak: answer.correct ? (prev?.streak || 0)+1 : 0, time: round.time, day:key, rightDays });
         day.total++;
         if (answer.correct) day.correct++;
       }
@@ -64,21 +65,27 @@ const Wortstand = (() => {
       const j=Math.floor(Math.random()*(i+1));
       [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
     }
-    const missed=[], fresh=[], review=[], collected=[];
+    const missed=[], fresh=[], review=[], due=[], collected=[];
+    const today=Lernplan.dayNumber(dayKey(new Date()));
     for (const card of shuffled) {
       const state=words.get(card.id);
       if (!state) fresh.push(card);
       else if (state.streak===0) missed.push(card);
       else if (state.streak===1) review.push(card);
-      else collected.push(card);
+      else {
+        const gap=today-Lernplan.dayNumber(state.day);
+        const interval=state.rightDays<2 ? 1 : state.rightDays===2 ? 3 : 7;
+        (gap>=interval ? due : collected).push(card);
+      }
     }
     const byAge=(a,b)=>words.get(a.id).time.localeCompare(words.get(b.id).time);
-    missed.sort(byAge);review.sort(byAge);collected.sort(byAge);
+    missed.sort(byAge);review.sort(byAge);due.sort(byAge);collected.sort(byAge);
     // Keep a slot for an unseen word so repeated misses do not hide the rest of the chapter.
-    const firstMisses = missed.splice(0, Math.max(0, size - (fresh.length ? 1 : 0)));
-    const available = size - firstMisses.length - (fresh.length ? 1 : 0);
+    const dailyReview = due.splice(0,1);
+    const firstMisses = missed.splice(0, Math.max(0, size - dailyReview.length - (fresh.length ? 1 : 0)));
+    const available = size - dailyReview.length - firstMisses.length - (fresh.length ? 1 : 0);
     const revisit = review.splice(0, Math.min(2, Math.max(0, available)));
-    return [...firstMisses, ...revisit, ...fresh, ...missed, ...review, ...collected].slice(0,size);
+    return [...firstMisses, ...dailyReview, ...revisit, ...fresh, ...missed, ...review, ...due, ...collected].slice(0,size);
   }
   function restore(data) {
     if (data?.format !== 'woerterwald-3-v1' || !Array.isArray(data.rounds) || !data.rounds.every(validRound)) throw Error('Ungültige Sicherung');

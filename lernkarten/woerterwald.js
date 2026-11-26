@@ -2,11 +2,28 @@
   'use strict';
   const $ = id => document.getElementById(id);
   const chapters = Wortstand.chapters;
-  let chapter = 5, round = null;
+  const todayKey = () => Wortstand.dayKey(new Date());
+  let anchor = Lernplan.initial, chapter, round = null;
+  function readSetting(key) {
+    try { return localStorage.getItem('woerterwald.3.'+key); } catch { return null; }
+  }
   try {
-    const n = Number(localStorage.getItem('woerterwald.3.kapitel'));
-    if (Number.isInteger(n) && chapters[n-1]) chapter=n;
-  } catch { /* The round also works in memory. */ }
+    const saved = JSON.parse(readSetting('pruefplan'));
+    if (Lernplan.valid(saved)) anchor = saved;
+  } catch { /* Use the current school chapter until a date is set. */ }
+  function applyChapter() {
+    const window = Lernplan.windowFor(anchor, todayKey());
+    const selected = Number(readSetting('kapitel'));
+    const selectionCycle = readSetting('auswahl-fuer');
+    const currentCycle = anchor.date + '/' + window.chapter;
+    chapter = selectionCycle === currentCycle && chapters[selected-1] ? selected : window.chapter;
+  }
+  function selectChapter(value) {
+    chapter = value;
+    storeSetting('kapitel',value);
+    storeSetting('auswahl-fuer',anchor.date+'/'+Lernplan.windowFor(anchor,todayKey()).chapter);
+  }
+  applyChapter();
   const element = (tag, text, cls) => {
     const el=document.createElement(tag); el.textContent=text; if(cls) el.className=cls; return el;
   };
@@ -37,10 +54,8 @@
     }
     return {prompt:'Schreib das Wort ins Heft.', solution:card.word};
   }
-  function weekOverview(cards, words) {
-    const friday = new Date();
-    friday.setDate(friday.getDate() + (5 - friday.getDay() + 7) % 7);
-    $('weekly-title').textContent = 'Bis Freitag, '+friday.toLocaleDateString('de-AT', {day:'numeric',month:'long'});
+  function weekOverview(cards, words, exam) {
+    $('weekly-title').textContent = exam.daysLeft < 0 ? 'Wörter zum Wiederholen' : 'Bis '+exam.label;
     const list = $('word-list');
     list.replaceChildren();
     const groups = [
@@ -69,19 +84,44 @@
   function home() {
     round=null;
     show('home');
-    const current=chapters[chapter-1], {words,days}=Wortstand.summary();
+    const current=chapters[chapter-1], {words}=Wortstand.summary();
+    const today = todayKey();
+    const exam = Lernplan.exam(anchor, chapter, today);
+    const when = exam.daysLeft===0 ? 'Heute' : exam.daysLeft===1 ? 'Morgen' : exam.label;
+    $('test-label').textContent = exam.daysLeft < 0 ? 'Wiederholung · Kapitel '+chapter : 'Geplante Überprüfung · '+when;
+    const stamp = Lernplan.dayNumber(anchor.date) + (chapter-anchor.chapter)*14;
+    $('exam-date').value = new Date((stamp+0.5)*86400000).toISOString().slice(0,10);
+    const practiced = current.cards.filter(c=>words.get(c.id)?.day===today).length;
+    let tip = 'Fünf Wörter fürs Heft, etwa 5–10 Minuten. Zum Schluss könnt ihr einen Satz ausprobieren.';
+    if (exam.daysLeft===1) tip = 'Für morgen: Startet mit fünf Wörtern. Achtet auf die schwierigen Stellen. Ein kurzer Satz reicht als Abschluss.';
+    else if (exam.daysLeft===0) tip = 'Heute ist der geplante Prüftag. Wenn Lilly mag, wiederholt ein paar vertraute Wörter.';
+    else if (exam.daysLeft>=2 && exam.daysLeft<=4) tip = 'Diktiere fünf Wörter wie bei der Überprüfung. Vergleicht nach jedem Wort die Schreibweise.';
+    if (practiced>=5) tip = 'Die fünf Wörter für heute sind geschafft. Morgen geht es weiter. Ein Satz ist heute freiwillig.';
+    $('daily-plan').textContent=tip;
     $('chapter').value=chapter;
     $('chapter-tag').textContent='Kapitel '+chapter+' von 16';
     $('chapter-title').textContent=current.icon+' '+current.title;
     const packed=current.cards.filter(c=>(words.get(c.id)?.streak || 0)>=2).length;
     $('mastered').textContent=packed; $('out-of').textContent='von '+current.cards.length+' Wörtern';
     $('mastery').max=current.cards.length; $('mastery').value=packed;
-    const today=days[Wortstand.dayKey(new Date())]?.total || 0;
-    $('today').textContent=today===0?'Heute ist noch Platz für deine erste Runde.':'Heute hast du '+today+(today===1?' Wort':' Wörter')+' geübt.';
-    weekOverview(current.cards,words);
+    $('today').textContent = 'Heute im Kapitel: '+Math.min(5,practiced)+' von 5 Tageswörtern geübt.';
+    const spaced=current.cards.filter(c=>(words.get(c.id)?.rightDays || 0)>=2).length;
+    $('day-confidence').textContent=spaced+' von '+current.cards.length+' Wörtern an mindestens zwei verschiedenen Tagen richtig geschrieben.';
+    weekOverview(current.cards,words,exam);
     notifyStorage();
   }
-  $('chapter').onchange=e=>{chapter=Number(e.target.value);storeSetting('kapitel',chapter);home();};
+  $('chapter').onchange=e=>{selectChapter(Number(e.target.value));$('plan-status').textContent='';home();};
+  $('set-exam').onclick=()=>{
+    const candidate={chapter,date:$('exam-date').value};
+    if(!Lernplan.valid(candidate) || candidate.date<'2020-01-01' || candidate.date>'2099-12-31') {
+      $('plan-status').textContent='Bitte wähle ein gültiges Datum.'; return;
+    }
+    anchor=candidate;
+    storeSetting('pruefplan',JSON.stringify(anchor));
+    selectChapter(chapter);
+    home();
+    $('plan-status').textContent='Termin für dieses Kapitel übernommen.';
+  };
   function start() {
     const queue=Wortstand.draw(chapters[chapter-1].cards,Wortstand.summary().words);
     const id=typeof crypto.randomUUID==='function'?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
@@ -99,6 +139,9 @@
     $('round-progress').value=round.i;
     const cardEl=$('card'), actions=$('actions');
     cardEl.replaceChildren(element('p','Zum Vorlesen · '+card.kind,'over'),element('h2',card.word),element('p',item.prompt));
+    const example=element('details','','example');
+    example.append(element('summary','Beispielsatz zum Vorlesen'),element('p',beispielsaetze[card.id]));
+    cardEl.append(example);
     const title=cardEl.querySelector('h2');
     title.tabIndex=-1;
     title.focus({preventScroll:true});
@@ -140,20 +183,34 @@
       $('souvenirs').append(element('p','Diese Wörter kommen in der nächsten Runde bevorzugt dran.'),
         ...round.retry.map(c=>element('span',c.word,'word-chip')));
     }
+    const sentenceCard=round.retry[0] || round.cards.find(c=>c.kind==='Merkwort') || round.cards[0];
+    $('end-example').open=false;
+    $('last-sentence').textContent=beispielsaetze[sentenceCard.id];
     show('result');$('end-title').focus({preventScroll:true});
   }
   $('start').onclick=start;$('again').onclick=start;$('done').onclick=home;
   $('stop').onclick=()=>{if(confirm('Zur Übersicht gehen? Deine bisherigen Antworten bleiben gespeichert.')) home();};
   $('export').onclick=()=>{
-    const blob=new Blob([JSON.stringify({format:'woerterwald-3-v1',rounds:Wortstand.rounds()})],{type:'application/json'});
+    const blob=new Blob([JSON.stringify({format:'woerterwald-3-v1',rounds:Wortstand.rounds(),plan:anchor})],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Woerterwald-Lernstand.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   };
   $('import').onchange=async e=>{
     const file=e.target.files[0];if(!file)return;
-    try {Wortstand.restore(JSON.parse(await file.text()));home();$('backup-status').textContent='Lernstände zusammengeführt.';}
+    try {
+      const data=JSON.parse(await file.text());
+      Wortstand.restore(data);
+      if(Lernplan.valid(data.plan)) {anchor=data.plan;storeSetting('pruefplan',JSON.stringify(anchor));applyChapter();}
+      home();$('backup-status').textContent='Lernstände zusammengeführt.';}
     catch {$('backup-status').textContent='Diese Datei ist keine gültige Wörterwald-Sicherung.';}
     e.target.value='';
   };
-  window.addEventListener('storage',()=>{if(!$('home').hidden) home();});
+  function refreshHome() {
+    if ($('home').hidden) return;
+    try {const saved=JSON.parse(readSetting('pruefplan'));if(Lernplan.valid(saved)) anchor=saved;} catch {}
+    applyChapter();home();
+  }
+  window.addEventListener('storage',refreshHome);
+  window.addEventListener('pageshow',refreshHome);
+  window.addEventListener('focus',refreshHome);
   home();
 })();

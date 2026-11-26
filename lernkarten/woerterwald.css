@@ -513,3 +513,15 @@ a {
     width: 100%;
   }
 }
+
+.exam-line { margin: 12px 0 0; font-weight: 750; color: var(--green); }
+.planning { margin: 16px 0 0; }
+.planning summary, .example summary { cursor: pointer; color: var(--green); padding: 8px 0; }
+.planning label { display: block; margin: 12px 0 5px; }
+.planning input[type=date] { font: inherit; padding: 8px; border: 1px solid var(--line); border-radius: 8px; max-width: 100%; }
+.planning button { margin: 6px 0; }
+.planning p:last-child:empty { display: none; }
+.example, .sentence-end { padding: 2px 14px; border: 1px solid var(--line); border-radius: 12px; }
+#card .example p, #last-sentence { font-size: 1.12rem; margin: 5px 0 12px; }
+.sentence-end { text-align: left; margin: 12px 0; }
+.sentence-end small { display: block; margin: 0 0 12px; }
