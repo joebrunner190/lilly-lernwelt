@@ -74,9 +74,11 @@ const Wortstand = (() => {
     }
     const byAge=(a,b)=>words.get(a.id).time.localeCompare(words.get(b.id).time);
     missed.sort(byAge);review.sort(byAge);collected.sort(byAge);
-    // Leave room for familiar words so the second round can already earn a keepsake.
-    const revisit=review.splice(0,Math.min(2,Math.max(0,size-missed.length)));
-    return [...missed,...revisit,...fresh,...review,...collected].slice(0,size);
+    // Keep a slot for an unseen word so repeated misses do not hide the rest of the chapter.
+    const firstMisses = missed.splice(0, Math.max(0, size - (fresh.length ? 1 : 0)));
+    const available = size - firstMisses.length - (fresh.length ? 1 : 0);
+    const revisit = review.splice(0, Math.min(2, Math.max(0, available)));
+    return [...firstMisses, ...revisit, ...fresh, ...missed, ...review, ...collected].slice(0,size);
   }
   function restore(data) {
     if (data?.format !== 'woerterwald-3-v1' || !Array.isArray(data.rounds) || !data.rounds.every(validRound)) throw Error('Ungültige Sicherung');

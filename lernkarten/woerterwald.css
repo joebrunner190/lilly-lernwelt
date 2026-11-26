@@ -194,15 +194,15 @@ h2 {
   gap: 6px;
 }
 
-label,legend,summary {
+label,summary {
   font-weight: 700;
 }
 
-label,legend {
+label {
   font-size: .9rem;
 }
 
-select,input[type=text] {
+select {
   font: inherit;
   border: 1px solid #a5b8a7;
   border-radius: 11px;
@@ -213,33 +213,7 @@ select,input[type=text] {
   width: 100%;
 }
 
-fieldset {
-  border: 0;
-  padding: 0;
-  margin: 17px 0 7px;
-}
-
-legend {
-  margin-bottom: 7px;
-}
-
-.choices {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.choices label {
-  position: relative;
-  cursor: pointer;
-}
-
-.choices input {
-  position: absolute;
-  opacity: 0;
-}
-
-.choices span,.file,button {
+.file,button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -255,12 +229,6 @@ legend {
   border-radius: 12px;
   cursor: pointer;
   min-height: 44px;
-}
-
-.choices input:checked+span {
-  border-color: var(--green);
-  background: #e2efe0;
-  box-shadow: inset 0 0 0 1px var(--green);
 }
 
 button {
@@ -283,7 +251,7 @@ button.primary {
   box-shadow: none;
 }
 
-button:focus-visible,a:focus-visible,summary:focus-visible,select:focus-visible,input:focus-visible,.choices input:focus-visible+span,.file:focus-within {
+button:focus-visible,a:focus-visible,summary:focus-visible,select:focus-visible,input:focus-visible,.file:focus-within {
   outline: 3px solid #923f90;
   outline-offset: 3px;
 }
@@ -347,15 +315,13 @@ progress::-moz-progress-bar {
   cursor: pointer;
 }
 
-.words summary span {
-  font-weight: 500;
-  color: var(--muted);
-  margin-left: 5px;
+.words details {
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
 }
 
-.words h3 {
-  margin: 17px 0 3px;
-  font-size: .94rem;
+.words details[open] summary {
+  margin-bottom: 5px;
 }
 
 .words ul {
@@ -450,11 +416,6 @@ a {
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
-}
-
-#entry {
-  font-size: 1.15rem;
-  margin: 6px 0;
 }
 
 .end {

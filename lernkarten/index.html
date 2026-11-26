@@ -12,30 +12,27 @@
 <main id="app">
 <section id="home">
   <div class="cover">
-    <div class="cover-copy"><p class="over">Sprachlichter 3</p><h1>Wörterwald</h1><p>Hallo Lilly! Welche Wörter sammelst du heute?</p></div>
+    <div class="cover-copy"><p class="over">Sprachlichter 3</p><h1>Wörterwald</h1><p>Lillys Lernwörter fürs Heft.</p></div>
     <div class="scene" aria-hidden="true"><i class="sun"></i><i class="hill far"></i><i class="hill near"></i><span class="castle">🏰</span><span class="trees">🌲🌲</span><span class="fox">🦊</span></div>
   </div>
   <div class="layout">
     <section class="panel mission"><div class="over" id="chapter-tag"></div><h2 id="chapter-title"></h2>
       <div class="controls"><label for="chapter">Dein Kapitel</label><select id="chapter"></select></div>
-      <fieldset><legend>Wie möchtest du üben?</legend><div class="choices">
-        <label><input type="radio" name="mode" value="cards" checked><span>🃏 Wortkarten</span></label>
-        <label><input type="radio" name="mode" value="write"><span>✏️ Schreibspiel</span></label>
-      </div></fieldset>
-      <p class="hint" id="mode-hint"></p><button class="primary" id="start">5 Wörter üben <span aria-hidden="true">→</span></button>
+      <p class="hint">Lies Lilly die Aufgabe vor. Sie schreibt ins Heft. Dann vergleichst du mit der Lösung und tippst auf „Richtig“ oder „Falsch“.</p>
+      <button class="primary" id="start">5 Wörter diktieren</button>
     </section>
     <aside class="panel collection"><p class="over">Deine Sammlung</p><h2>Wörter im Rucksack</h2><div class="count"><span aria-hidden="true">🎒</span><strong id="mastered">0</strong><small id="out-of"></small></div><progress id="mastery" value="0" max="20" aria-label="Gesammelte Wörter im Kapitel"></progress>
       <p class="hint">Ein Wort wandert in deinen Rucksack, wenn du es in zwei Runden hintereinander gleich kannst.</p><p id="today" class="today"></p>
     </aside>
   </div>
-  <details class="panel words"><summary>Alle Wörter in diesem Kapitel <span id="word-count"></span></summary><div id="word-list"></div></details>
+  <section class="panel words" aria-labelledby="weekly-title"><p class="over">Wochenziel für dieses Kapitel</p><h2 id="weekly-title"></h2><div id="word-list"></div></section>
   <footer><a href="klasse2.html">Lernbox der 2. Klasse</a><details><summary>Lernstand sichern</summary><p>Dein Wörterwald speichert auf diesem Gerät. Mit einer Sicherung kannst du auf einem anderen Gerät weiterüben.</p><button id="export">Sicherung laden</button> <label class="file">Sicherung einlesen<input id="import" type="file" accept=".json,application/json"></label><p id="backup-status" role="status"></p></details></footer>
 </section>
 <section id="play" hidden class="panel practice">
   <button class="back" id="stop">← Zur Übersicht</button><div class="round-info"><span id="round-meta"></span><span id="steps"></span></div><progress id="round-progress" value="0" max="5" aria-label="Rundenfortschritt"></progress>
   <div id="card" aria-live="polite"></div><div class="actions" id="actions"></div>
 </section>
-<section id="result" hidden class="panel end" aria-live="polite"><span class="big-art" aria-hidden="true">🎒</span><p class="over">Runde geschafft</p><h2 tabindex="-1" id="end-title">Gut geübt, Lilly!</h2><p id="score"></p><p id="retry-score"></p><div id="souvenirs"></div><button class="primary" id="again">Noch 5 Wörter üben →</button> <button id="done">Zur Übersicht</button></section>
+<section id="result" hidden class="panel end" aria-live="polite"><span class="big-art" aria-hidden="true">🎒</span><p class="over">Runde geschafft</p><h2 tabindex="-1" id="end-title">Gut geübt, Lilly!</h2><p id="score"></p><p id="retry-score"></p><div id="souvenirs"></div><button class="primary" id="again">Noch 5 Wörter diktieren</button> <button id="done">Zur Übersicht</button></section>
 <p id="storage-note" role="status"></p></main>
 <script src="woerter.js"></script><script src="wortstand.js"></script><script src="woerterwald.js"></script>
 </body></html>
