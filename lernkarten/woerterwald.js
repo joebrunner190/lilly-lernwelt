@@ -23,6 +23,7 @@
     storeSetting('kapitel',value);
     storeSetting('auswahl-fuer',anchor.date+'/'+Lernplan.windowFor(anchor,todayKey()).chapter);
   }
+  let preferredSize = readSetting('rundengroesse') || 'alle';
   applyChapter();
   const element = (tag, text, cls) => {
     const el=document.createElement(tag); el.textContent=text; if(cls) el.className=cls; return el;
@@ -60,15 +61,13 @@
     list.replaceChildren();
     const groups = [
       {title:'Noch üben', cards:[]},
-      {title:'Einmal richtig', cards:[]},
-      {title:'Noch nicht abgefragt', cards:[]},
-      {title:'Sicher im Rucksack', cards:[]}
+      {title:'Im Rucksack', cards:[]},
+      {title:'Noch nicht abgefragt', cards:[]}
     ];
     for (const card of cards) {
       const state = words.get(card.id);
       if (!state) groups[2].cards.push(card);
-      else if (state.streak >= 2) groups[3].cards.push(card);
-      else groups[state.streak].cards.push(card);
+      else groups[state.streak > 0 ? 1 : 0].cards.push(card);
     }
     for (const [i, group] of groups.entries()) {
       if (!group.cards.length) continue;
@@ -92,19 +91,26 @@
     const stamp = Lernplan.dayNumber(anchor.date) + (chapter-anchor.chapter)*14;
     $('exam-date').value = new Date((stamp+0.5)*86400000).toISOString().slice(0,10);
     const practiced = current.cards.filter(c=>words.get(c.id)?.day===today).length;
-    let tip = 'Fünf Wörter fürs Heft, etwa 5–10 Minuten. Zum Schluss könnt ihr einen Satz ausprobieren.';
-    if (exam.daysLeft===1) tip = 'Für morgen: Startet mit fünf Wörtern. Achtet auf die schwierigen Stellen. Ein kurzer Satz reicht als Abschluss.';
-    else if (exam.daysLeft===0) tip = 'Heute ist der geplante Prüftag. Wenn Lilly mag, wiederholt ein paar vertraute Wörter.';
-    else if (exam.daysLeft>=2 && exam.daysLeft<=4) tip = 'Diktiere fünf Wörter wie bei der Überprüfung. Vergleicht nach jedem Wort die Schreibweise.';
-    if (practiced>=5) tip = 'Die fünf Wörter für heute sind geschafft. Morgen geht es weiter. Ein Satz ist heute freiwillig.';
+    let tip = 'Noch offene Wörter kommen zuerst. Nach dem Durchgang wiederholt ihr die Fehlerwörter.';
+    if (exam.daysLeft===1) tip = 'Für morgen könnt ihr das ganze Kapitel durchgehen. Fehlerwörter kommen am Schluss noch einmal.';
+    if (practiced===current.cards.length) tip = 'Ihr habt heute jedes Wort im Kapitel geübt.';
     $('daily-plan').textContent=tip;
     $('chapter').value=chapter;
     $('chapter-tag').textContent='Kapitel '+chapter+' von 16';
     $('chapter-title').textContent=current.icon+' '+current.title;
-    const packed=current.cards.filter(c=>(words.get(c.id)?.streak || 0)>=2).length;
+    const packed=current.cards.filter(c=>words.get(c.id)?.streak>0).length;
+    const sizeSelect=$('round-size');
+    sizeSelect.replaceChildren();
+    sizeSelect.add(new Option('Alle ('+current.cards.length+' Wörter)','alle'));
+    for (const n of [5,10,15,20]) {
+      if(n<=current.cards.length) sizeSelect.add(new Option(n+' Wörter',String(n)));
+    }
+    sizeSelect.value=[5,10,15,20].includes(Number(preferredSize)) && Number(preferredSize)<=current.cards.length ? preferredSize : 'alle';
+    updateStartLabel();
+    showErrorsButton('errors-home',words);
     $('mastered').textContent=packed; $('out-of').textContent='von '+current.cards.length+' Wörtern';
     $('mastery').max=current.cards.length; $('mastery').value=packed;
-    $('today').textContent = 'Heute im Kapitel: '+Math.min(5,practiced)+' von 5 Tageswörtern geübt.';
+    $('today').textContent = 'Heute im Kapitel: '+practiced+' von '+current.cards.length+' Wörtern geübt.';
     const spaced=current.cards.filter(c=>(words.get(c.id)?.rightDays || 0)>=2).length;
     $('day-confidence').textContent=spaced+' von '+current.cards.length+' Wörtern an mindestens zwei verschiedenen Tagen richtig geschrieben.';
     weekOverview(current.cards,words,exam);
@@ -122,8 +128,31 @@
     home();
     $('plan-status').textContent='Termin für dieses Kapitel übernommen.';
   };
-  function start() {
-    const queue=Wortstand.draw(chapters[chapter-1].cards,Wortstand.summary().words);
+  function requestedSize() {
+    return Number($('round-size').value) || chapters[chapter-1].cards.length;
+  }
+  function updateStartLabel() {
+    const prefix=$('round-size').value==='alle' ? 'Alle ' : '';
+    $('start').textContent=prefix+requestedSize()+' Wörter diktieren';
+  }
+  $('round-size').onchange=()=>{
+    preferredSize=$('round-size').value;
+    storeSetting('rundengroesse',preferredSize);
+    updateStartLabel();
+  };
+  function errorCards(words) {
+    return chapters[chapter-1].cards.filter(c=>words.get(c.id)?.streak===0);
+  }
+  function showErrorsButton(id,words) {
+    const n=errorCards(words).length;
+    $(id).hidden=!n;
+    $(id).textContent=n===1 ? 'Nur das Fehlerwort üben' : 'Nur die '+n+' Fehlerwörter üben';
+  }
+  function start(errorsOnly=false) {
+    const words=Wortstand.summary().words;
+    const cards=errorsOnly ? errorCards(words) : chapters[chapter-1].cards;
+    if (!cards.length) {home();return;}
+    const queue=Wortstand.draw(cards,words,errorsOnly ? cards.length : requestedSize());
     const id=typeof crypto.randomUUID==='function'?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
     round={cards:queue,retry:[],i:0,repeat:false,recovered:0,locked:false,record:{id,time:new Date().toISOString(),answers:[]}};
     show('play'); question();
@@ -180,15 +209,17 @@
     $('retry-score').textContent=round.retry.length?'Beim zweiten Versuch hast du '+round.recovered+' von '+round.retry.length+' geschafft.':'';
     $('souvenirs').replaceChildren();
     if (round.retry.length) {
-      $('souvenirs').append(element('p','Diese Wörter kommen in der nächsten Runde bevorzugt dran.'),
+      $('souvenirs').append(element('p','Diese Wörter stehen unter „Noch üben“.'),
         ...round.retry.map(c=>element('span',c.word,'word-chip')));
     }
+    showErrorsButton('errors-end',Wortstand.summary().words);
     const sentenceCard=round.retry[0] || round.cards.find(c=>c.kind==='Merkwort') || round.cards[0];
     $('end-example').open=false;
     $('last-sentence').textContent=beispielsaetze[sentenceCard.id];
     show('result');$('end-title').focus({preventScroll:true});
   }
-  $('start').onclick=start;$('again').onclick=start;$('done').onclick=home;
+  $('start').onclick=()=>start();$('again').onclick=()=>start();$('done').onclick=home;
+  $('errors-home').onclick=()=>start(true);$('errors-end').onclick=()=>start(true);
   $('stop').onclick=()=>{if(confirm('Zur Übersicht gehen? Deine bisherigen Antworten bleiben gespeichert.')) home();};
   $('export').onclick=()=>{
     const blob=new Blob([JSON.stringify({format:'woerterwald-3-v1',rounds:Wortstand.rounds(),plan:anchor})],{type:'application/json'});

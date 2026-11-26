@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#14554a">
 <title>Wörterwald · Lillys Lernwelt</title>
-<link rel="stylesheet" href="woerterwald.css?v=lernplan-2">
+<link rel="stylesheet" href="woerterwald.css?v=wortauswahl-3">
 </head>
 <body>
 <header><div class="bar"><a class="brand" href="../index.html"><span aria-hidden="true">📖</span> Lillys Lernwelt</a><span>Deutsch · 3. Klasse</span></div></header>
@@ -20,14 +20,15 @@
       <div class="controls"><label for="chapter">Dein Kapitel</label><select id="chapter"></select></div>
       <p id="test-label" class="exam-line"></p>
       <p class="hint" id="daily-plan"></p>
-      <button class="primary" id="start">5 Wörter diktieren</button>
+      <div class="controls"><label for="round-size">Wie viele Wörter?</label><select id="round-size"></select></div>
+      <button class="primary" id="start">Alle Wörter diktieren</button> <button id="errors-home" hidden>Nur Fehlerwörter üben</button>
       <details class="planning"><summary>Prüfungstermin anpassen</summary>
         <label for="exam-date">Termin für das gewählte Kapitel</label><input type="date" id="exam-date" min="2020-01-01" max="2099-12-31">
         <button id="set-exam" type="button">Termin speichern</button><p class="hint">Ab diesem Termin schlägt die App alle zwei Wochen das nächste Kapitel vor. Bei Ferien oder einer Änderung kannst du den Termin verschieben.</p><p id="plan-status" role="status"></p>
       </details>
     </section>
     <aside class="panel collection"><p class="over">Deine Sammlung</p><h2>Wörter im Rucksack</h2><div class="count"><span aria-hidden="true">🎒</span><strong id="mastered">0</strong><small id="out-of"></small></div><progress id="mastery" value="0" max="20" aria-label="Gesammelte Wörter im Kapitel"></progress>
-      <p class="hint">Ein Wort wandert in deinen Rucksack, wenn du es in zwei Runden hintereinander gleich kannst.</p><p id="today" class="today"></p><p id="day-confidence" class="hint"></p>
+      <p class="hint">Beim ersten Versuch richtig? Das Wort kommt in den Rucksack. Fehlerwörter wiederholt ihr am Rundenende. In der nächsten eigenen Abfrage können sie in den Rucksack wandern.</p><p id="today" class="today"></p><p id="day-confidence" class="hint"></p>
     </aside>
   </div>
   <section class="panel words" aria-labelledby="weekly-title"><p class="over">Lernstand für dieses Kapitel</p><h2 id="weekly-title"></h2><div id="word-list"></div></section>
@@ -42,7 +43,7 @@
   <button class="back" id="stop">← Zur Übersicht</button><div class="round-info"><span id="round-meta"></span><span id="steps"></span></div><progress id="round-progress" value="0" max="5" aria-label="Rundenfortschritt"></progress>
   <div id="card" aria-live="polite"></div><div class="actions" id="actions"></div>
 </section>
-<section id="result" hidden class="panel end" aria-live="polite"><span class="big-art" aria-hidden="true">🎒</span><p class="over">Runde geschafft</p><h2 tabindex="-1" id="end-title">Gut geübt, Lilly!</h2><p id="score"></p><p id="retry-score"></p><div id="souvenirs"></div><details class="planning sentence-end" id="end-example"><summary>Ein Satz zum Abschluss</summary><p id="last-sentence"></p><small>Ins Heft diktieren. Prüft das Lernwort, den Satzanfang und den Punkt.</small></details><button class="primary" id="again">Noch 5 Wörter diktieren</button> <button id="done">Zur Übersicht</button></section>
+<section id="result" hidden class="panel end" aria-live="polite"><span class="big-art" aria-hidden="true">🎒</span><p class="over">Runde geschafft</p><h2 tabindex="-1" id="end-title">Gut geübt, Lilly!</h2><p id="score"></p><p id="retry-score"></p><div id="souvenirs"></div><details class="planning sentence-end" id="end-example"><summary>Ein Satz zum Abschluss</summary><p id="last-sentence"></p><small>Ins Heft diktieren. Prüft das Lernwort, den Satzanfang und den Punkt.</small></details><button id="errors-end" hidden>Nur Fehlerwörter üben</button> <button class="primary" id="again">Nächste Runde</button> <button id="done">Zur Übersicht</button></section>
 <p id="storage-note" role="status"></p></main>
-<script src="woerter.js?v=lernplan-2"></script><script src="beispielsaetze.js?v=lernplan-2"></script><script src="lernplan.js?v=lernplan-2"></script><script src="wortstand.js?v=lernplan-2"></script><script src="woerterwald.js?v=lernplan-2"></script>
+<script src="woerter.js?v=wortauswahl-3"></script><script src="beispielsaetze.js?v=wortauswahl-3"></script><script src="lernplan.js?v=wortauswahl-3"></script><script src="wortstand.js?v=wortauswahl-3"></script><script src="woerterwald.js?v=wortauswahl-3"></script>
 </body></html>

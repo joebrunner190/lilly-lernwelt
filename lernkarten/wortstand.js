@@ -10,10 +10,11 @@ const Wortstand = (() => {
     return { title: chapter.title, icon: chapter.icon, cards };
   });
   const knownIds = new Set(chapters.flatMap(chapter => chapter.cards.map(card => card.id)));
+  const maxCards = Math.max(...chapters.map(chapter => chapter.cards.length));
   function validRound(round) {
     return round && typeof round === 'object' && /^[a-z\d-]{8,80}$/i.test(round.id)
       && typeof round.time === 'string' && Number.isFinite(Date.parse(round.time))
-      && Array.isArray(round.answers) && round.answers.length <= 5
+      && Array.isArray(round.answers) && round.answers.length <= maxCards
       && new Set(round.answers.map(a => a?.word)).size === round.answers.length
       && round.answers.every(a => a && knownIds.has(a.word) && typeof a.correct === 'boolean');
   }
@@ -59,33 +60,32 @@ const Wortstand = (() => {
     return { words, days };
   }
   function draw(cards, words, size=5) {
-    // Mix equal-priority words. Revisit misses first, then vary unseen and familiar words.
+    // Shuffle ties; today’s words return only after the rest of the chapter.
     const shuffled = [...cards];
     for (let i=shuffled.length-1; i>0; i--) {
       const j=Math.floor(Math.random()*(i+1));
       [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
     }
-    const missed=[], fresh=[], review=[], due=[], collected=[];
+    const fresh=[], missed=[], review=[], due=[], collected=[], todayCards=[];
     const today=Lernplan.dayNumber(dayKey(new Date()));
     for (const card of shuffled) {
       const state=words.get(card.id);
-      if (!state) fresh.push(card);
+      if (!state) {fresh.push(card); continue;}
+      const gap=today-Lernplan.dayNumber(state.day);
+      if (gap===0) todayCards.push(card);
       else if (state.streak===0) missed.push(card);
       else if (state.streak===1) review.push(card);
       else {
-        const gap=today-Lernplan.dayNumber(state.day);
         const interval=state.rightDays<2 ? 1 : state.rightDays===2 ? 3 : 7;
         (gap>=interval ? due : collected).push(card);
       }
     }
     const byAge=(a,b)=>words.get(a.id).time.localeCompare(words.get(b.id).time);
-    missed.sort(byAge);review.sort(byAge);due.sort(byAge);collected.sort(byAge);
-    // Keep a slot for an unseen word so repeated misses do not hide the rest of the chapter.
-    const dailyReview = due.splice(0,1);
-    const firstMisses = missed.splice(0, Math.max(0, size - dailyReview.length - (fresh.length ? 1 : 0)));
-    const available = size - dailyReview.length - firstMisses.length - (fresh.length ? 1 : 0);
-    const revisit = review.splice(0, Math.min(2, Math.max(0, available)));
-    return [...firstMisses, ...dailyReview, ...revisit, ...fresh, ...missed, ...review, ...due, ...collected].slice(0,size);
+    for (const group of [missed, review, due, collected, todayCards]) group.sort(byAge);
+    const available=Math.max(0,size-fresh.length);
+    const firstMisses=missed.splice(0,Math.max(0,available-(due.length ? 1 : 0)));
+    return [...fresh,...firstMisses,...due.slice(0,1),...missed,...review,...due.slice(1),...collected,...todayCards].slice(0,size);
+
   }
   function restore(data) {
     if (data?.format !== 'woerterwald-3-v1' || !Array.isArray(data.rounds) || !data.rounds.every(validRound)) throw Error('Ungültige Sicherung');
