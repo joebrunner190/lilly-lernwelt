@@ -383,6 +383,8 @@
   </style>
 </head>
 <body>
+  <script src="lernkarten/woerter.js"></script>
+  <script src="lernkarten/wortstand.js"></script>
   <!-- LOGIN -->
   <div id="login-screen">
     <h1>Lilly's Lernwelt</h1>
@@ -440,25 +442,31 @@
     </div>
 
     <div class="module-grid">
-      <a class="module-card" href="lernkarten/" id="card-lernkarten">
+      <a class="module-card" href="lernkarten/index.html" id="card-woerterwald">
+        <div class="module-icon">🦊</div>
+        <div class="module-name">Wörterwald · 3. Klasse</div>
+        <div class="module-stars" id="stars-woerterwald"></div>
+        <div class="module-score" id="score-woerterwald">Fünf Lernwörter üben</div>
+      </a>
+      <a class="module-card" href="lernkarten/klasse2.html" id="card-lernkarten">
         <div class="module-icon">&#128218;</div>
-        <div class="module-name">Lernkarten</div>
+        <div class="module-name">Lernbox · 2. Klasse</div>
         <div class="module-stars" id="stars-lernkarten"></div>
         <div class="module-score" id="score-lernkarten"></div>
       </a>
-      <a class="module-card" href="rechnen/" id="card-rechnen">
+      <a class="module-card" href="rechnen/index.html" id="card-rechnen">
         <div class="module-icon">&#10006;&#247;</div>
         <div class="module-name">Rechnen</div>
         <div class="module-stars" id="stars-rechnen"></div>
         <div class="module-score" id="score-rechnen"></div>
       </a>
-      <a class="module-card" href="uhr/" id="card-uhr">
+      <a class="module-card" href="uhr/index.html" id="card-uhr">
         <div class="module-icon">&#128336;</div>
         <div class="module-name">Uhr</div>
         <div class="module-stars" id="stars-uhr"></div>
         <div class="module-score" id="score-uhr"></div>
       </a>
-      <a class="module-card" href="datum/" id="card-datum">
+      <a class="module-card" href="datum/index.html" id="card-datum">
         <div class="module-icon">&#128197;</div>
         <div class="module-name">Datum</div>
         <div class="module-stars" id="stars-datum"></div>
@@ -518,10 +526,10 @@
     };
 
     // Only init if not already initialized
-    if (!firebase.apps.length) {
+    if (window.firebase && !firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
-    const db = firebase.database();
+    const db = window.firebase?.database?.();
 
     // Second Firebase app for Rechnen (Firestore in lillymathe1x1)
     const rechenConfig = {
@@ -532,24 +540,31 @@
       messagingSenderId: "855669535952",
       appId: "1:855669535952:web:29bf91b2f4845d3e50dad5"
     };
-    let rechenApp;
-    try {
-      rechenApp = firebase.app('rechnen');
-    } catch(e) {
-      rechenApp = firebase.initializeApp(rechenConfig, 'rechnen');
-    }
-    const rechenDb = rechenApp.firestore();
+    const rechenApp = window.firebase?.apps.find(app => app.name === 'rechnen')
+      || window.firebase?.initializeApp(rechenConfig, 'rechnen');
+    const rechenDb = rechenApp?.firestore?.();
 
     // ===== USERS CONFIG =====
     const USERS = {
-      lilly: { pin: '1234', role: 'child', name: 'Lilly' },
-      josef: { password: 'josef2024', role: 'parent', name: 'Josef' },
-      mitzi: { password: 'mitzi2024', role: 'parent', name: 'Mitzi' }
+      lilly: { salt: '99c0550b4121b8ec60f4fd3a8c8c64a1', verifier: 'f2c6f0a062d283b52a2efa15e32791f25284d644a99b73e73c92eb0c57b51b4a', role: 'child', name: 'Lilly' },
+      josef: { salt: '1ca564fab69f44fbf4c92fe8932c63ca', verifier: 'dc302bfdd68669e6d9b27f8190af9cead1ece3ae3147ba7b3f174c8990eb1d16', role: 'parent', name: 'Josef' },
+      mitzi: { salt: '233c74780422e6e73f8eccbcc62f2622', verifier: '5b151858847791f4d5b9d1efda2f6e8980f2fe16531eff0351a086f0cad60a8c', role: 'parent', name: 'Mitzi' }
     };
 
-    const MODULES = ['lernkarten', 'rechnen', 'uhr', 'datum'];
+    // Profile selection only. Database access must be authorized separately.
+    async function matchesProfile(profile, input) {
+      const bytes = new TextEncoder();
+      const key = await crypto.subtle.importKey('raw', bytes.encode(input), 'PBKDF2', false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits({
+        name: 'PBKDF2', hash: 'SHA-256', iterations: 210000, salt: bytes.encode(profile.salt)
+      }, key, 256);
+      return Array.from(new Uint8Array(bits), byte => byte.toString(16).padStart(2, '0')).join('') === profile.verifier;
+    }
+
+    const MODULES = ['woerterwald', 'lernkarten', 'rechnen', 'uhr', 'datum'];
     const MODULE_LABELS = {
-      lernkarten: 'Lernkarten',
+      woerterwald: 'Wörterwald · 3. Klasse (dieses Gerät)',
+      lernkarten: 'Lernbox · 2. Klasse',
       rechnen: 'Rechnen',
       uhr: 'Uhr',
       datum: 'Datum'
@@ -601,8 +616,11 @@
         }
       },
 
-      checkPin() {
-        if (this.pin === USERS.lilly.pin) {
+      async checkPin() {
+        const entry = this.pin;
+        const matched = await matchesProfile(USERS.lilly, entry);
+        if (entry !== this.pin) return;
+        if (matched) {
           this.currentUser = 'lilly';
           this.showPortal();
         } else {
@@ -612,11 +630,12 @@
         }
       },
 
-      elternLogin() {
+      async elternLogin() {
         const pw = document.getElementById('eltern-password').value.trim();
-        let user = null;
-        if (pw === USERS.josef.password) user = 'josef';
-        else if (pw === USERS.mitzi.password) user = 'mitzi';
+        const names = ['josef', 'mitzi'];
+        const matches = await Promise.all(names.map(name => matchesProfile(USERS[name], pw)));
+        if (document.getElementById('eltern-password').value.trim() !== pw) return;
+        const user = names[matches.indexOf(true)];
 
         if (user) {
           this.currentUser = user;
@@ -671,10 +690,14 @@
       // --- Stats & Stars ---
       loadStats() {
         const today = this.dateKey();
+        const current = Wortstand.summary();
+        this.renderModuleStars('woerterwald', current.days, today);
+        this.renderStreak({woerterwald: current.days});
 
         // Load Uhr & Datum stats from Realtime DB
-        db.ref('stats/lilly').once('value').then(snap => {
+        db?.ref('stats/lilly').once('value').then(snap => {
           const data = snap.val() || {};
+          data.woerterwald = current.days;
           this.statsData = data;
           this.renderModuleStars('uhr', data.uhr, today);
           this.renderModuleStars('datum', data.datum, today);
@@ -682,13 +705,12 @@
         }).catch(() => {});
 
         // Load Lernkarten stats from Realtime DB (vocabulary)
-        db.ref('vocabulary').once('value').then(snap => {
+        db?.ref('vocabulary').once('value').then(snap => {
           const data = snap.val();
           if (data) {
             const cards = Object.values(data);
             const total = cards.length;
-            const mastered = cards.filter(c => c.box >= 4).length;
-            const practiced = cards.filter(c => c.box > 1 || c.wrongCount > 0).length;
+            const mastered = cards.filter(c => c.box === 5).length;
             const stars = this.calcStarsFromProgress(mastered, total);
             this.renderStarsDirectly('lernkarten', stars, mastered + '/' + total + ' gelernt');
           } else {
@@ -699,7 +721,7 @@
         });
 
         // Load Rechnen stats from Firestore (lillymathe1x1)
-        rechenDb.collection('users').doc('Lilly').get().then(doc => {
+        rechenDb?.collection('users').doc('Lilly').get().then(doc => {
           if (doc.exists) {
             const d = doc.data();
             const leitner = d.leitner || {};
@@ -805,16 +827,16 @@
       },
 
       loadDashboard() {
-        db.ref('stats/lilly').once('value').then(snap => {
-          const data = snap.val() || {};
+        const render = data => {
+          data.woerterwald = Wortstand.summary().days;
           this.renderWeekBars(data);
           this.renderDashModules(data);
           this.renderWeakAreas(data);
           this.renderLastActivity(data);
           this.renderResetButtons();
-        }).catch(() => {
-          document.getElementById('dash-modules').innerHTML = '<p style="color:#6b7280;font-size:14px;">Keine Daten verfügbar</p>';
-        });
+        };
+        render({});
+        db?.ref('stats/lilly').once('value').then(snap => render(snap.val() || {})).catch(() => {});
       },
 
       renderWeekBars(data) {
@@ -900,7 +922,9 @@
           }
         });
 
-        if (weakAreas.length === 0) {
+        if (!MODULES.some(mod => last7.some(day => data[mod]?.[day]?.total > 0))) {
+          container.textContent = 'Noch keine Übungsdaten für diese Woche.';
+        } else if (weakAreas.length === 0) {
           container.innerHTML = '<div class="dash-stat-row"><span class="dash-stat-label">Alles gut!</span><span class="dash-stat-value good">&#128077;</span></div>';
         } else {
           let html = '';
@@ -952,7 +976,7 @@
       renderResetButtons() {
         const container = document.getElementById('dash-reset');
         let html = '';
-        MODULES.forEach(mod => {
+        MODULES.filter(mod => mod !== 'woerterwald' && (mod === 'rechnen' ? rechenDb : db)).forEach(mod => {
           html += '<div class="dash-stat-row">';
           html += '<span class="dash-stat-label">' + MODULE_LABELS[mod] + '</span>';
           html += '<button class="btn-reset" id="reset-' + mod + '" onclick="Portal.resetModule(\'' + mod + '\')">Zurücksetzen</button>';
