@@ -327,7 +327,7 @@
 <body>
   <!-- HEADER -->
   <div class="app-header">
-    <a href="../" class="btn-home">&#8592;</a>
+    <a href="../index.html" class="btn-home">&#8592;</a>
     <span class="header-title">&#128336; Uhr lernen</span>
     <span class="header-score" id="header-score">0/0</span>
   </div>
@@ -456,8 +456,8 @@
       messagingSenderId: "467753183092",
       appId: "1:467753183092:web:e799c7b262ce5d56252e21"
     };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    if (window.firebase && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = window.firebase?.database?.();
 
     const ROUNDS = 10;
 
@@ -674,9 +674,7 @@
           type: 'time-input-24',
           hours: h12, minutes: m,
           h24: h24,
-          question: isPM
-            ? 'Es ist ' + displayTime + ' Uhr nachmittags. Schreibe im 24h-Format:'
-            : 'Es ist ' + displayTime + ' Uhr vormittags. Schreibe im 24h-Format:',
+          question: 'Es ist ' + displayTime + ' Uhr ' + (h24 < 6 ? 'nachts' : h24 < 12 ? 'vormittags' : h24 === 12 ? 'mittags' : h24 < 18 ? 'nachmittags' : 'abends') + '. Schreibe im 24h-Format:',
           answer: { h: h24, m: m },
           clockOpts: {}
         };
@@ -742,10 +740,9 @@
         return {
           type: 'time-input',
           hours: r.h, minutes: r.m,
-          question: r.icon + ' ' + r.activity + ' — Wann ist das meistens?',
+          question: r.icon + ' ' + r.activity + ': Welche Zeit zeigt die Uhr?',
           answer: { h: r.h, m: r.m },
-          clockOpts: {},
-          showClock: false
+          clockOpts: {}
         };
       },
 
@@ -923,6 +920,10 @@
       },
 
       saveStats(correct, total) {
+        if (!db) {
+          document.getElementById('result-score').append(' · Nur auf diesem Bildschirm');
+          return;
+        }
         const today = new Date();
         const key = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
         const timeStr = String(today.getHours()).padStart(2,'0') + ':' + String(today.getMinutes()).padStart(2,'0');
