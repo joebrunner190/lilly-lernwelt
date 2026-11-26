@@ -206,7 +206,7 @@
 <body>
   <!-- HEADER -->
   <div class="app-header">
-    <a href="../" class="btn-home">&#8592;</a>
+    <a href="../index.html" class="btn-home">&#8592;</a>
     <span class="header-title">&#128197; Datum lernen</span>
     <span class="header-score" id="header-score">0/0</span>
   </div>
@@ -313,8 +313,8 @@
       messagingSenderId: "467753183092",
       appId: "1:467753183092:web:e799c7b262ce5d56252e21"
     };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    if (window.firebase && !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = window.firebase?.database?.();
 
     const ROUNDS = 10;
 
@@ -369,13 +369,13 @@
         const choices = [
           correctAnswer,
           d + '. ' + wrongMonths[0] + ' ' + y,
-          this.randInt(1,28) + '. ' + MONATE[m] + ' ' + y,
+          (d % 28 + 1) + '. ' + MONATE[m] + ' ' + y,
           d + '. ' + wrongMonths[1] + ' ' + (y + 1)
         ];
         this.shuffle(choices);
         return {
           type: 'choice',
-          question: 'Wie heißt' + d + '.' + (m+1) + '.' + y + ' in Langform?',
+          question: 'Wie heißt ' + d + '.' + (m+1) + '.' + y + ' in Langform?',
           choices: choices,
           correctIndex: choices.indexOf(correctAnswer),
           explanation: 'Richtig: ' + correctAnswer,
@@ -412,7 +412,6 @@
       genTage() {
         const m = this.randInt(0, 11);
         const correctDays = MONATE_TAGE[m];
-        const displayDays = m === 1 ? '28 (oder 29)' : String(correctDays);
         const choices = ['28','29','30','31'];
         if (m === 1) {
           // February special
@@ -426,11 +425,7 @@
             explanation: 'Der Februar hat 28 Tage, im Schaltjahr 29!'
           };
         }
-        const wrongChoices = choices.filter(c => parseInt(c) !== correctDays);
-        this.shuffle(wrongChoices);
-        const ch = [String(correctDays), wrongChoices[0], wrongChoices[1]];
-        // Add one more
-        ch.push(correctDays === 31 ? '29' : '31');
+        const ch = choices;
         this.shuffle(ch);
         return {
           type: 'choice',
@@ -593,11 +588,10 @@
           // What date is today in short form?
           () => {
             const correctStr = realDay + '.' + (realMonth + 1) + '.' + realYear;
-            const wrongDates = [
-              (realDay > 1 ? realDay - 1 : realDay + 2) + '.' + (realMonth + 1) + '.' + realYear,
-              realDay + '.' + (realMonth === 0 ? 12 : realMonth) + '.' + realYear,
-              (realDay < 28 ? realDay + 1 : realDay - 1) + '.' + (realMonth + 1) + '.' + realYear
-            ];
+            const wrongDates = [-1, 1, 7].map(offset => {
+              const date = new Date(realYear, realMonth, realDay + offset);
+              return date.getDate() + '.' + (date.getMonth()+1) + '.' + date.getFullYear();
+            });
             const choices = [correctStr, ...wrongDates];
             this.shuffle(choices);
             return {
@@ -629,11 +623,10 @@
             const tMonth = tomorrow.getMonth();
             const tYear = tomorrow.getFullYear();
             const correctStr = tDay + '. ' + MONATE[tMonth] + ' ' + tYear;
-            const wrongStrs = [
-              (tDay < 28 ? tDay + 1 : tDay - 1) + '. ' + MONATE[tMonth] + ' ' + tYear,
-              tDay + '. ' + MONATE[(tMonth + 1) % 12] + ' ' + tYear,
-              realDay + '. ' + MONATE[realMonth] + ' ' + realYear
-            ];
+            const wrongStrs = [-1, 1, 7].map(offset => {
+              const date = new Date(tYear, tMonth, tDay + offset);
+              return date.getDate() + '. ' + MONATE[date.getMonth()] + ' ' + date.getFullYear();
+            });
             const choices = [correctStr, ...wrongStrs];
             this.shuffle(choices);
             return {
@@ -824,6 +817,10 @@
       },
 
       saveStats(correct, total) {
+        if (!db) {
+          document.getElementById('result-score').append(' · Nur auf diesem Bildschirm');
+          return;
+        }
         const today = new Date();
         const key = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
         const timeStr = String(today.getHours()).padStart(2,'0') + ':' + String(today.getMinutes()).padStart(2,'0');
