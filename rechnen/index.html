@@ -23,15 +23,15 @@
       messagingSenderId: "855669535952",
       appId: "1:855669535952:web:29bf91b2f4845d3e50dad5"
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    window.firebase?.initializeApp(firebaseConfig);
+    const db = window.firebase?.firestore?.();
   </script>
 </head>
 <body>
   <div id="app">
     <!-- Header -->
     <header id="app-header">
-      <a href="../" class="btn-icon" id="btn-home" title="Zurück zur Lernwelt" style="text-decoration:none">
+      <a href="../index.html" class="btn-icon" id="btn-home" title="Zurück zur Lernwelt" style="text-decoration:none">
         <span>&#127968;</span>
       </a>
       <button id="btn-back" class="btn-icon" onclick="App.goBack()" style="display:none">
